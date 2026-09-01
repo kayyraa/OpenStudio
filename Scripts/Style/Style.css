@@ -1,0 +1,1939 @@
+@import url("https://fonts.googleapis.com/css2?family=Cascadia+Mono:ital,wght@0,200..700;1,200..700&display=swap");
+
+:root {
+    --Bg: #1a1a1a;
+    --BgRaised: #222222;
+    --BgPanel: #1e1e1e;
+    --BgInput: #141414;
+    --Border: #333333;
+    --Text: #e8e8e8;
+    --TextDim: #888888;
+    --Accent: #ff6a00;
+    --AccentHover: #ff8533;
+    --Danger: #c44;
+    --MuteOn: #c44;
+    --TopbarH: 32px;
+    --HeaderH: 26px;
+    --PianoH: 140px;
+    --Ease: cubic-bezier(0.22, 1, 0.36, 1);
+    --EaseSnap: cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+* {
+    font-family: "Cascadia Mono", monospace;
+    font-size: 12px;
+    box-sizing: border-box;
+    scrollbar-width: thin;
+    scrollbar-color: #3a3a3a transparent;
+}
+
+*::-webkit-scrollbar { width: 8px; height: 8px; }
+*::-webkit-scrollbar-track { background: #141414; }
+*::-webkit-scrollbar-thumb { background: #3a3a3a; border: 2px solid #141414; }
+*::-webkit-scrollbar-thumb:hover { background: #4a4a4a; }
+*::-webkit-scrollbar-corner { background: #141414; }
+
+html, body {
+    background: var(--Bg);
+    color: var(--Text);
+    margin: 0;
+    overflow: hidden;
+    height: 100%;
+    width: 100%;
+    user-select: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+}
+
+input, textarea {
+    user-select: text;
+    -webkit-user-select: text;
+    -moz-user-select: text;
+}
+
+button { font-family: inherit; font-size: inherit; }
+
+.Button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 14px;
+    border: 1px solid var(--Border);
+    background: var(--BgRaised);
+    color: var(--Text);
+    cursor: pointer;
+    height: 100%;
+    user-select: none;
+    transition: background 0.15s var(--Ease), border-color 0.15s var(--Ease), color 0.15s var(--Ease), transform 0.12s var(--Ease);
+}
+
+.Button:hover {
+    background: #2a2a2a;
+    border-color: #4a4a4a;
+}
+
+.Button:active { transform: scale(0.97); }
+
+.Button.Primary {
+    background: var(--Accent);
+    border-color: var(--Accent);
+    color: #111;
+    height: 30px;
+    width: 100%;
+    margin-top: 10px;
+    font-weight: 600;
+}
+
+.Button.Primary:hover {
+    background: var(--AccentHover);
+    border-color: var(--AccentHover);
+}
+
+.IconBtn {
+    background: transparent;
+    border: none;
+    color: var(--TextDim);
+    cursor: pointer;
+    width: 22px;
+    height: 22px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    font-size: 14px;
+    line-height: 1;
+    transition: color 0.15s var(--Ease), transform 0.12s var(--Ease);
+}
+
+.IconBtn:hover { color: var(--Accent); }
+.IconBtn:active { transform: scale(0.9); }
+
+.InputWrapper {
+    position: relative;
+    display: inline-block;
+    height: 100%;
+    width: 100%;
+}
+
+.InputWrapper input {
+    appearance: none;
+    -webkit-appearance: none;
+    background: transparent;
+    color: var(--Text);
+    padding: 0 8px;
+    border: none;
+    outline: none;
+    height: 100%;
+    width: 100%;
+}
+
+.InputWrapper input[type="number"]::-webkit-outer-spin-button,
+.InputWrapper input[type="number"]::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+.InputWrapper input[type="number"] { -moz-appearance: textfield; }
+
+.Topbar {
+    display: flex;
+    align-items: stretch;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: var(--TopbarH);
+    background: #121212;
+    border-bottom: 1px solid var(--Border);
+    z-index: 100;
+}
+
+.TopbarLeft, .TopbarRight {
+    display: flex;
+    align-items: stretch;
+    height: 100%;
+}
+
+.TopbarLeft { flex: 1; min-width: 0; }
+.TopbarRight { margin-left: auto; flex-shrink: 0; }
+
+.TopbarLeft > *, .TopbarRight > * {
+    display: flex;
+    align-items: center;
+    height: 100%;
+    border-right: 1px solid var(--Border);
+}
+
+.Topbar .Logo {
+    height: 100%;
+    width: auto;
+    aspect-ratio: 1;
+    padding: 4px;
+    object-fit: contain;
+    opacity: 0.9;
+    transition: opacity 0.2s var(--Ease);
+}
+
+.Topbar .Logo:hover { opacity: 1; }
+
+.ProjectNameWrap { min-width: 9em; width: 11em; }
+.ProjectNameWrap input { font-weight: 500; }
+
+.Controls img {
+    height: 100%;
+    width: 32px;
+    padding: 6px;
+    cursor: pointer;
+    object-fit: contain;
+    opacity: 0.85;
+    transition: background 0.15s var(--Ease), opacity 0.15s var(--Ease), transform 0.12s var(--Ease);
+}
+
+.Controls img:hover { background: #1f1f1f; opacity: 1; }
+.Controls img:active { transform: scale(0.92); }
+.Controls img:not(:first-child) { border-left: 1px solid var(--Border); }
+
+.TempoGroup {
+    gap: 6px;
+    padding: 0 10px;
+    min-width: 8.5em;
+    color: var(--TextDim);
+}
+
+.TempoGroup .InputWrapper { width: 3.2em; }
+.TempoGroup .InputWrapper input { color: var(--Text); font-weight: 600; }
+
+.TempoBubble {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    border: 1px solid #555;
+    background: transparent;
+    flex-shrink: 0;
+    transition: background-color 0.08s linear, box-shadow 0.08s linear;
+}
+
+.TempoBubble.Flash {
+    background: var(--Accent) !important;
+    box-shadow: 0 0 8px var(--Accent);
+}
+
+.TimeGroup {
+    padding: 0 12px;
+    min-width: 6.2em;
+    font-variant-numeric: tabular-nums;
+    color: var(--Text);
+}
+
+.WaveformWrap {
+    flex: 1;
+    min-width: 120px;
+    max-width: 420px;
+    background: #0a0a0a;
+    overflow: hidden;
+    position: relative;
+}
+
+.WaveformWrap canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+}
+
+.WaveformPlayhead {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 35%;
+    width: 2px;
+    background: #ff3333;
+    pointer-events: none;
+    box-shadow: 0 0 6px rgba(255, 51, 51, 0.55);
+    z-index: 2;
+    transition: opacity 0.2s var(--Ease);
+}
+
+.UserChip {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0 8px 0 10px;
+    animation: FadeIn 0.25s var(--Ease);
+}
+
+.UserChip .Profile {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 1px solid var(--Border);
+}
+
+#DisplayNameLabel {
+    color: var(--TextDim);
+    max-width: 100px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.SignOutButton {
+    height: 22px;
+    font-size: 11px;
+    padding: 0 10px;
+    background: transparent;
+}
+
+.SignInButton { padding: 0 16px; }
+
+.Workspace {
+    display: flex;
+    position: fixed;
+    top: var(--TopbarH);
+    left: 0;
+    right: 0;
+    bottom: var(--PianoH);
+    background: var(--Bg);
+}
+
+.Dock {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    background: var(--BgPanel);
+    flex-shrink: 0;
+    min-width: 120px;
+    max-width: 480px;
+    transition: box-shadow 0.2s var(--Ease);
+}
+
+.Dock.Resizing {
+    transition: none;
+    user-select: none;
+}
+
+.PanelLeft { border-right: 1px solid var(--Border); }
+.PanelRight { border-left: 1px solid var(--Border); }
+
+.DockResize {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 5px;
+    cursor: col-resize;
+    z-index: 20;
+    background: transparent;
+    transition: background 0.15s var(--Ease);
+}
+
+.DockResize:hover,
+.Dock.Resizing .DockResize {
+    background: var(--Accent);
+}
+
+.PanelLeft .DockResize { right: -2px; }
+.PanelRight .DockResize { left: -2px; }
+
+.PanelHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: var(--HeaderH);
+    padding: 0 8px;
+    background: #161616;
+    border-bottom: 1px solid var(--Border);
+    flex-shrink: 0;
+}
+
+.PanelHeader span {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--TextDim);
+}
+
+.ChannelList {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+.ChannelRow {
+    display: flex;
+    align-items: center;
+    height: 48px;
+    border-bottom: 1px solid #2a2a2a;
+    cursor: grab;
+    gap: 4px;
+    padding-right: 4px;
+    background: #1c1c1c;
+    transition: background 0.15s var(--Ease), box-shadow 0.15s var(--Ease), transform 0.15s var(--Ease);
+    animation: SlideInLeft 0.22s var(--Ease);
+}
+
+.ChannelRow:hover { background: #242424; }
+.ChannelRow:active { cursor: grabbing; }
+
+.ChannelRow.Selected {
+    background: #2a2218;
+    box-shadow: inset 2px 0 0 var(--Accent);
+}
+
+.ChannelRow.Dragging {
+    opacity: 0.45;
+    transform: scale(0.98);
+}
+
+.ChannelColor {
+    width: 3px;
+    height: 100%;
+    flex-shrink: 0;
+}
+
+.ChannelInfo {
+    flex: 1;
+    min-width: 0;
+    padding-left: 6px;
+    pointer-events: none;
+}
+
+.ChannelName {
+    display: block;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: 12px;
+    color: var(--Text);
+}
+
+.MuteBtn, .RemoveChannelBtn {
+    background: #1a1a1a;
+    border: 1px solid #333;
+    color: var(--TextDim);
+    width: 20px;
+    height: 20px;
+    border-radius: 2px;
+    cursor: pointer;
+    font-size: 10px;
+    padding: 0;
+    line-height: 1;
+    transition: background 0.15s var(--Ease), border-color 0.15s var(--Ease), color 0.15s var(--Ease), transform 0.12s var(--Ease);
+}
+
+.MuteBtn:hover, .RemoveChannelBtn:hover {
+    color: var(--Text);
+    border-color: #555;
+}
+
+.MuteBtn:active, .RemoveChannelBtn:active { transform: scale(0.9); }
+
+.MuteBtn.Active {
+    background: var(--MuteOn);
+    border-color: var(--MuteOn);
+    color: #fff;
+}
+
+.Playlist {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    background: #141414;
+    position: relative;
+}
+
+.Playlist.DropTarget {
+    outline: 1px solid var(--Accent);
+    outline-offset: -1px;
+}
+
+.PlaylistHeader {
+    height: var(--HeaderH);
+    border-bottom: 1px solid var(--Border);
+    overflow: hidden;
+    background: #161616;
+    flex-shrink: 0;
+}
+
+.PlaylistHeader canvas { display: block; height: 100%; }
+
+.PlaylistBody {
+    flex: 1;
+    overflow: auto;
+    position: relative;
+    background: #121212;
+}
+
+.PlaylistBody canvas { display: block; }
+
+
+.Browser {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+}
+
+.BrowserToolbar {
+    display: flex;
+    gap: 6px;
+    padding: 6px;
+    border-bottom: 1px solid var(--Border);
+    background: #181818;
+    flex-shrink: 0;
+}
+
+.BrowserToolbar input[type="text"] {
+    flex: 1;
+    background: var(--BgInput);
+    border: 1px solid var(--Border);
+    color: var(--Text);
+    padding: 5px 8px;
+    border-radius: 2px;
+    outline: none;
+    min-width: 0;
+    transition: border-color 0.15s var(--Ease);
+}
+
+.BrowserToolbar input[type="text"]::placeholder { color: #555; }
+.BrowserToolbar input[type="text"]:focus { border-color: var(--Accent); }
+
+.UploadBtn {
+    display: flex;
+    align-items: center;
+    padding: 0 8px;
+    border: 1px solid var(--Border);
+    border-radius: 2px;
+    cursor: pointer;
+    font-size: 11px;
+    white-space: nowrap;
+    background: #1c1c1c;
+    color: var(--TextDim);
+    transition: color 0.15s var(--Ease), border-color 0.15s var(--Ease);
+}
+
+.UploadBtn:hover { color: var(--Accent); border-color: #555; }
+
+.SampleList { flex: 1; overflow-y: auto; min-height: 0; }
+
+.SampleItem {
+    display: flex;
+    align-items: center;
+    padding: 8px;
+    border-bottom: 1px solid #2a2a2a;
+    gap: 4px;
+    background: #1c1c1c;
+    transition: background 0.15s var(--Ease);
+    animation: FadeIn 0.2s var(--Ease);
+}
+
+.SampleItem:hover { background: #242424; }
+
+.SampleMeta { flex: 1; min-width: 0; }
+
+.SampleName {
+    display: block;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: 12px;
+    color: var(--Text);
+}
+
+.SampleSub {
+    display: block;
+    font-size: 10px;
+    color: var(--TextDim);
+    margin-top: 2px;
+}
+
+.SampleActions { display: flex; gap: 0; flex-shrink: 0; }
+
+.UploadStatus {
+    padding: 6px 8px;
+    font-size: 11px;
+    border-top: 1px solid var(--Border);
+    min-height: 26px;
+    color: var(--TextDim);
+    background: #161616;
+    flex-shrink: 0;
+    transition: color 0.2s var(--Ease);
+}
+
+.UploadStatus.Busy { color: #e0a040; }
+.UploadStatus.Ok { color: #6a9; }
+.UploadStatus.Err { color: var(--Danger); }
+
+.Loading, .Empty, .Error {
+    padding: 14px;
+    color: var(--TextDim);
+    font-size: 12px;
+}
+
+.Error { color: var(--Danger); }
+
+.DragGhost {
+    position: fixed;
+    pointer-events: none;
+    z-index: 9999;
+    padding: 6px 10px;
+    background: #2a2218;
+    border: 1px solid var(--Accent);
+    color: var(--Text);
+    font-size: 11px;
+    border-radius: 3px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+    display: none;
+    opacity: 0;
+    transform: scale(0.92);
+    transition: opacity 0.12s var(--Ease), transform 0.12s var(--EaseSnap);
+}
+
+.DragGhost.Visible {
+    display: block;
+    opacity: 1;
+    transform: scale(1);
+}
+
+.ModalOverlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.75);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    animation: FadeIn 0.2s var(--Ease);
+}
+
+.Modal {
+    background: #1c1c1c;
+    border: 1px solid #3a3a3a;
+    border-radius: 4px;
+    width: 320px;
+    max-width: 94vw;
+    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.6);
+    animation: ScaleIn 0.22s var(--EaseSnap);
+}
+
+.ModalHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--Border);
+    background: #161616;
+}
+
+.ModalHeader span { font-weight: 600; font-size: 13px; }
+
+.ModalBody {
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.ModalBody label {
+    font-size: 11px;
+    color: var(--TextDim);
+    margin-top: 6px;
+}
+
+.ModalBody input {
+    background: #121212;
+    border: 1px solid var(--Border);
+    color: var(--Text);
+    padding: 8px 10px;
+    border-radius: 2px;
+    outline: none;
+    transition: border-color 0.15s var(--Ease);
+}
+
+.ModalBody input:focus { border-color: var(--Accent); }
+
+.ModalError {
+    color: var(--Danger);
+    font-size: 12px;
+    min-height: 1.2em;
+    margin-top: 4px;
+}
+
+.ModalHint {
+    font-size: 11px;
+    color: var(--TextDim);
+    margin: 12px 0 0;
+    text-align: center;
+}
+
+.ModalHint a {
+    color: var(--Accent);
+    text-decoration: none;
+    transition: color 0.15s var(--Ease);
+}
+
+.ModalHint a:hover { color: var(--AccentHover); }
+
+@keyframes FadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes ScaleIn {
+    from { opacity: 0; transform: scale(0.94) translateY(6px); }
+    to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+@keyframes SlideInLeft {
+    from { opacity: 0; transform: translateX(-8px); }
+    to { opacity: 1; transform: translateX(0); }
+}
+
+.FxGroup {
+    gap: 6px;
+    padding: 0 8px;
+    min-width: 11em;
+    color: var(--TextDim);
+    font-size: 10px;
+}
+
+.FxGroup label {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    font-size: 10px;
+}
+
+.FxGroup input[type="range"] {
+    width: 48px;
+    height: 4px;
+    accent-color: var(--Accent);
+    cursor: pointer;
+}
+
+.ChannelMain {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 4px;
+    padding: 4px 4px 4px 6px;
+}
+
+.ChannelRow {
+    height: auto;
+    min-height: 52px;
+    padding-top: 4px;
+    padding-bottom: 4px;
+}
+
+.StepGrid {
+    display: grid;
+    grid-template-columns: repeat(16, 1fr);
+    gap: 2px;
+    width: 100%;
+}
+
+.StepCell {
+    height: 14px;
+    border: 1px solid #333;
+    background: #151515;
+    padding: 0;
+    cursor: pointer;
+    border-radius: 1px;
+    transition: background 0.1s var(--Ease), border-color 0.1s var(--Ease);
+}
+
+.StepCell.Beat {
+    border-color: #444;
+}
+
+.StepCell:hover {
+    border-color: var(--Accent);
+}
+
+.StepCell.On {
+    background: var(--Accent);
+    border-color: var(--AccentHover);
+}
+
+.StretchBtn {
+    background: #1a1a1a;
+    border: 1px solid #333;
+    color: var(--TextDim);
+    width: 20px;
+    height: 20px;
+    border-radius: 2px;
+    cursor: pointer;
+    font-size: 10px;
+    padding: 0;
+    line-height: 1;
+    flex-shrink: 0;
+}
+
+.StretchBtn.Active {
+    background: #2a2218;
+    border-color: var(--Accent);
+    color: var(--Accent);
+}
+
+.Dock.PanelLeft {
+    min-width: 220px;
+}
+
+.PianoDock {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 120px;
+    background: #141414;
+    border-top: 1px solid var(--Border);
+    z-index: 50;
+    display: flex;
+    flex-direction: column;
+}
+
+.PianoToolbar {
+    height: 28px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 0 10px;
+    border-bottom: 1px solid var(--Border);
+    background: #161616;
+    color: var(--TextDim);
+    font-size: 11px;
+    flex-shrink: 0;
+    overflow-x: auto;
+}
+
+.PianoToolbar label {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    white-space: nowrap;
+}
+
+.PianoToolbar input[type="range"] {
+    width: 52px;
+    height: 4px;
+    accent-color: var(--Accent);
+}
+
+.PianoToolbar input[type="number"] {
+    width: 2.5em;
+    background: #0e0e0e;
+    border: 1px solid #333;
+    color: var(--Text);
+    padding: 2px 4px;
+}
+
+.PianoToolbar select {
+    background: #0e0e0e;
+    border: 1px solid #333;
+    color: var(--Text);
+    padding: 2px 4px;
+}
+
+.PianoKeys {
+    flex: 1;
+    display: flex;
+    align-items: stretch;
+    padding: 6px 8px;
+    gap: 2px;
+    overflow-x: auto;
+    background: #101010;
+}
+
+.PianoKey {
+    border: 1px solid #222;
+    cursor: pointer;
+    font-size: 9px;
+    padding: 0;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    padding-bottom: 4px;
+    transition: background 0.05s linear, transform 0.05s linear;
+    user-select: none;
+}
+
+.PianoKey.White {
+    flex: 1;
+    min-width: 28px;
+    background: #e8e8e8;
+    color: #333;
+    border-radius: 0 0 3px 3px;
+}
+
+.PianoKey.Black {
+    flex: 0.65;
+    min-width: 18px;
+    background: #1a1a1a;
+    color: #888;
+    border-radius: 0 0 2px 2px;
+    margin: 0 -4px;
+    z-index: 2;
+    height: 62%;
+    align-self: flex-start;
+}
+
+.PianoKey.White:hover { background: #fff; }
+.PianoKey.Black:hover { background: #333; }
+.PianoKey.Down {
+    background: var(--Accent) !important;
+    color: #111 !important;
+    transform: translateY(1px);
+}
+
+.PluginMenu {
+    position: fixed;
+    top: calc(var(--TopbarH) + 30px);
+    left: 8px;
+    z-index: 200;
+    flex-direction: column;
+    background: #1c1c1c;
+    border: 1px solid #3a3a3a;
+    border-radius: 4px;
+    overflow: hidden;
+    min-width: 180px;
+    box-shadow: 0 12px 32px rgba(0,0,0,0.5);
+}
+
+.PluginMenu button {
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid #2a2a2a;
+    color: var(--Text);
+    text-align: left;
+    padding: 10px 12px;
+    cursor: pointer;
+}
+
+.PluginMenu button:hover {
+    background: #2a2218;
+    color: var(--Accent);
+}
+
+.RecBtn {
+    background: #1a1a1a;
+    border: 1px solid #444;
+    color: var(--TextDim);
+    padding: 2px 8px;
+    cursor: pointer;
+    font-size: 11px;
+    border-radius: 2px;
+}
+.RecBtn.Active {
+    background: #c22;
+    border-color: #f44;
+    color: #fff;
+}
+.PianoDock {
+    z-index: 80 !important;
+}
+.PianoKeys {
+    min-height: 72px;
+}
+.PianoKey.White {
+    min-height: 64px;
+}
+
+.Controls {
+    display: flex;
+    align-items: center;
+    gap: 0;
+}
+
+.RecordButton {
+    width: 14px;
+    height: 14px;
+    margin: 0 10px;
+    padding: 0;
+    border-radius: 50%;
+    border: 2px solid #666;
+    background: #3a1515;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: background 0.15s var(--Ease), border-color 0.15s var(--Ease), box-shadow 0.15s var(--Ease), transform 0.12s var(--Ease);
+}
+
+.RecordButton:hover {
+    border-color: #c44;
+    background: #5a1a1a;
+}
+
+.RecordButton.Active {
+    background: #e11;
+    border-color: #ff4444;
+    box-shadow: 0 0 0 3px rgba(255, 40, 40, 0.25), 0 0 12px rgba(255, 40, 40, 0.55);
+    animation: RecPulse 1.2s ease-in-out infinite;
+}
+
+@keyframes RecPulse {
+    0%, 100% { box-shadow: 0 0 0 3px rgba(255, 40, 40, 0.2), 0 0 8px rgba(255, 40, 40, 0.4); }
+    50% { box-shadow: 0 0 0 5px rgba(255, 40, 40, 0.15), 0 0 16px rgba(255, 40, 40, 0.6); }
+}
+
+.PianoDock {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: var(--PianoH);
+    background: #121212;
+    border-top: 1px solid var(--Border);
+    z-index: 80;
+    display: flex;
+    flex-direction: column;
+}
+
+.DockResizeHorizontal {
+    height: 5px;
+    cursor: ns-resize;
+    background: transparent;
+    flex-shrink: 0;
+    transition: background 0.15s var(--Ease);
+}
+
+.DockResizeHorizontal:hover,
+.PianoDock.Resizing .DockResizeHorizontal {
+    background: var(--Accent);
+}
+
+.PianoToolbar {
+    height: 30px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0 10px;
+    border-bottom: 1px solid var(--Border);
+    background: #161616;
+    color: var(--TextDim);
+    font-size: 11px;
+    flex-shrink: 0;
+    overflow-x: auto;
+}
+
+.PianoTitle {
+    color: var(--Text);
+    font-weight: 600;
+    font-size: 11px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.PianoHint {
+    color: #555;
+    font-size: 10px;
+    white-space: nowrap;
+}
+
+.PianoSpacer { flex: 1; min-width: 8px; }
+
+.GhostBtn {
+    background: transparent;
+    border: 1px solid #333;
+    color: var(--TextDim);
+    padding: 3px 8px;
+    cursor: pointer;
+    font-size: 10px;
+    border-radius: 2px;
+}
+
+.GhostBtn:hover {
+    border-color: #555;
+    color: var(--Text);
+}
+
+.PianoKeys {
+    flex: 1;
+    display: flex;
+    align-items: stretch;
+    padding: 8px 10px 10px;
+    gap: 3px;
+    overflow-x: auto;
+    background: linear-gradient(180deg, #141414, #0e0e0e);
+    min-height: 0;
+}
+
+.PianoKey {
+    border: 1px solid #222;
+    cursor: pointer;
+    font-size: 9px;
+    padding: 0 0 6px;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    transition: background 0.05s linear, transform 0.05s linear;
+    user-select: none;
+}
+
+.PianoKey.White {
+    flex: 1 1 0;
+    min-width: 32px;
+    background: #ececec;
+    color: #444;
+    border-radius: 0 0 4px 4px;
+    box-shadow: inset 0 -2px 0 #ccc;
+}
+
+.PianoKey.Black {
+    flex: 0 0 22px;
+    min-width: 22px;
+    background: #1a1a1a;
+    color: #777;
+    border-radius: 0 0 3px 3px;
+    margin: 0 -6px;
+    z-index: 2;
+    height: 58%;
+    align-self: flex-start;
+    box-shadow: inset 0 -2px 0 #000;
+}
+
+.PianoKey.White:hover { background: #fff; }
+.PianoKey.Black:hover { background: #2a2a2a; }
+.PianoKey.Down {
+    background: var(--Accent) !important;
+    color: #111 !important;
+    transform: translateY(1px);
+    box-shadow: none !important;
+}
+
+.EmptyHint {
+    position: absolute;
+    left: 50%;
+    top: 40%;
+    transform: translate(-50%, -50%);
+    color: #555;
+    font-size: 13px;
+    pointer-events: none;
+    text-align: center;
+    line-height: 1.6;
+    max-width: 360px;
+}
+
+.MicButton {
+    width: 22px;
+    height: 22px;
+    margin: 0 6px 0 0;
+    border-radius: 3px;
+    border: 1px solid #555;
+    background: #1a1a1a;
+    color: #aaa;
+    cursor: pointer;
+    font-size: 11px;
+    font-weight: 700;
+}
+.MicButton.Active {
+    background: #c22;
+    border-color: #f55;
+    color: #fff;
+    box-shadow: 0 0 10px rgba(255,40,40,0.5);
+}
+.PublishStatus {
+    color: var(--TextDim);
+    font-size: 11px;
+    padding: 0 8px;
+    align-self: center;
+}
+.HeaderActions { display: flex; gap: 2px; }
+.Dock.Collapsed .ChannelList,
+.Dock.Collapsed .BrowserToolbar,
+.Dock.Collapsed .SampleList,
+.Dock.Collapsed .UploadStatus,
+.Dock.Collapsed .PanelHeader span {
+    display: none;
+}
+.Dock.Collapsed {
+    min-width: 28px !important;
+    max-width: 28px !important;
+}
+.Dock.Collapsed .PanelHeader {
+    padding: 0;
+    justify-content: center;
+}
+.PianoDock.Collapsed .PianoKeys,
+.PianoDock.Collapsed .PianoToolbar label,
+.PianoDock.Collapsed .PianoToolbar select,
+.PianoDock.Collapsed .PianoHint,
+.PianoDock.Collapsed .GhostBtn {
+    display: none !important;
+}
+.PianoDock.Collapsed {
+    height: 32px !important;
+}
+
+.PianoKeys {
+    gap: 1px !important;
+    padding: 4px 6px !important;
+}
+.PianoKey.White {
+    min-width: 18px !important;
+    flex: 1 1 0 !important;
+    font-size: 8px !important;
+    padding-bottom: 3px !important;
+}
+.PianoKey.Black {
+    flex: 0 0 12px !important;
+    min-width: 12px !important;
+    margin: 0 -3px !important;
+    height: 55% !important;
+    font-size: 7px !important;
+}
+
+.PianoRollWindow {
+    width: min(1100px, 96vw);
+    height: min(640px, 90vh);
+    background: #1a1a1a;
+    border: 1px solid #3a3a3a;
+    border-radius: 6px;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.65);
+    overflow: hidden;
+}
+
+.PianoRollHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px;
+    background: #141414;
+    border-bottom: 1px solid #333;
+    flex-shrink: 0;
+}
+
+.PianoRollHeader span {
+    font-weight: 600;
+    font-size: 13px;
+}
+
+.PianoRollHeaderActions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.PianoRollHeaderActions select {
+    background: #0e0e0e;
+    border: 1px solid #333;
+    color: #ddd;
+    padding: 2px 4px;
+}
+
+.PianoRollBody {
+    flex: 1;
+    display: flex;
+    min-height: 0;
+    background: #101010;
+}
+
+.PianoRollKeys {
+    width: 56px;
+    flex-shrink: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    background: #151515;
+    border-right: 1px solid #2a2a2a;
+    position: relative;
+}
+
+.PianoRollKey {
+    height: 16px;
+    box-sizing: border-box;
+    border-bottom: 1px solid #222;
+    font-size: 9px;
+    padding: 0 4px;
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    user-select: none;
+}
+
+.PianoRollKey.White {
+    background: #e8e8e8;
+    color: #333;
+}
+
+.PianoRollKey.Black {
+    background: #1c1c1c;
+    color: #888;
+}
+
+.PianoRollKey.Down {
+    background: var(--Accent) !important;
+    color: #111 !important;
+}
+
+.PianoRollGridWrap {
+    flex: 1;
+    overflow: auto;
+    position: relative;
+    background: #0e0e0e;
+}
+
+.PianoRollGridWrap canvas {
+    display: block;
+}
+
+.PianoRollFooter {
+    padding: 6px 12px;
+    border-top: 1px solid #333;
+    background: #141414;
+    color: #666;
+    font-size: 11px;
+    flex-shrink: 0;
+}
+
+#TimelineCanvas { cursor: crosshair; }
+#PianoRollCanvas { cursor: crosshair; }
+.PianoKey { cursor: pointer !important; }
+.DockResize { cursor: col-resize; }
+.DockResizeHorizontal { cursor: ns-resize; }
+.ChannelRow { cursor: grab; }
+.ChannelRow:active { cursor: grabbing; }
+
+/* Modern DAW sliders — thumb enlarges only while dragging */
+input[type="range"] {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 56px;
+    height: 16px;
+    background: transparent;
+    cursor: pointer;
+    vertical-align: middle;
+    outline: none;
+}
+
+input[type="range"]::-webkit-slider-runnable-track {
+    height: 3px;
+    border-radius: 99px;
+    background: #2a2a2a;
+    border: none;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 11px;
+    height: 11px;
+    border-radius: 50%;
+    background: var(--Accent, #ff6a00);
+    border: 2px solid #121212;
+    margin-top: -4px;
+    box-shadow: 0 0 0 1px rgba(255, 106, 0, 0.35);
+    transition: transform 0.14s cubic-bezier(0.22, 1, 0.36, 1),
+                box-shadow 0.14s cubic-bezier(0.22, 1, 0.36, 1),
+                background 0.14s ease;
+    transform: scale(1);
+}
+
+input[type="range"]:hover::-webkit-slider-thumb {
+    background: var(--AccentHover, #ff8533);
+    /* no scale on hover — only while actively dragging */
+    transform: scale(1);
+}
+
+input[type="range"]:active::-webkit-slider-thumb {
+    transform: scale(1.35);
+    background: #ff9a4a;
+    box-shadow: 0 0 0 3px rgba(255, 106, 0, 0.28);
+}
+
+input[type="range"]:focus {
+    outline: none;
+}
+
+input[type="range"]:focus:not(:active)::-webkit-slider-thumb {
+    transform: scale(1);
+    box-shadow: 0 0 0 1px rgba(255, 106, 0, 0.35);
+}
+
+input[type="range"]::-moz-range-track {
+    height: 3px;
+    border-radius: 99px;
+    background: #2a2a2a;
+    border: none;
+}
+
+input[type="range"]::-moz-range-thumb {
+    width: 11px;
+    height: 11px;
+    border-radius: 50%;
+    background: var(--Accent, #ff6a00);
+    border: 2px solid #121212;
+    box-shadow: 0 0 0 1px rgba(255, 106, 0, 0.35);
+    transition: transform 0.14s cubic-bezier(0.22, 1, 0.36, 1),
+                box-shadow 0.14s cubic-bezier(0.22, 1, 0.36, 1);
+    transform: scale(1);
+}
+
+input[type="range"]:active::-moz-range-thumb {
+    transform: scale(1.35);
+    box-shadow: 0 0 0 3px rgba(255, 106, 0, 0.28);
+}
+
+.NoteInspector {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 12px;
+    background: #161616;
+    border-top: 1px solid #2a2a2a;
+    flex-shrink: 0;
+    color: #888;
+    font-size: 11px;
+}
+
+.NoteInspectorLabel {
+    color: #ccc;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-size: 10px;
+}
+
+.NoteInspector label {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    white-space: nowrap;
+}
+
+#NoteInspectorInfo {
+    margin-left: auto;
+    color: #666;
+    font-variant-numeric: tabular-nums;
+}
+
+.Workspace {
+    bottom: var(--PianoH, 140px) !important;
+}
+
+.EventGraphBar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 10px;
+    background: #121212;
+    border-top: 1px solid #2a2a2a;
+    flex-shrink: 0;
+}
+
+.EventGraphBar select {
+    background: #0e0e0e;
+    border: 1px solid #333;
+    color: #ddd;
+    padding: 3px 6px;
+    font-size: 11px;
+}
+
+.EventGraphWrap {
+    flex: 1;
+    min-width: 0;
+    height: 72px;
+    background: #0c0c0c;
+    border: 1px solid #2a2a2a;
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+#EventGraphCanvas {
+    display: block;
+    width: 100%;
+    height: 72px;
+    cursor: crosshair;
+}
+
+#RulerCanvas {
+    cursor: pointer;
+}
+
+/* PianoRollModal interact */
+#PianoRollModal {
+    z-index: 5000 !important;
+    pointer-events: auto !important;
+}
+#PianoRollModal .PianoRollWindow {
+    pointer-events: auto !important;
+    position: relative;
+    z-index: 5001;
+}
+#PianoRollModal button,
+#PianoRollModal select,
+#PianoRollModal canvas,
+#PianoRollModal input {
+    pointer-events: auto !important;
+}
+#PianoRollClose {
+    cursor: pointer !important;
+    min-width: 28px;
+    min-height: 28px;
+    font-size: 16px;
+    line-height: 1;
+}
+#PianoRollCanvas {
+    touch-action: none;
+}
+
+.BrowserTabs {
+    display: flex;
+    gap: 0;
+    border-bottom: 1px solid var(--Border);
+    background: #161616;
+    flex-shrink: 0;
+}
+.BrowserTab {
+    flex: 1;
+    background: transparent;
+    border: none;
+    border-bottom: 2px solid transparent;
+    color: var(--TextDim);
+    padding: 8px 6px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    cursor: pointer;
+}
+.BrowserTab:hover { color: var(--Text); }
+.BrowserTab.Active {
+    color: var(--Accent);
+    border-bottom-color: var(--Accent);
+}
+.EventGraphBar.Active {
+    box-shadow: inset 0 0 0 1px var(--Accent);
+    background: #1a1610;
+}
+.ProjectItem .OpenProjectBtn {
+    font-size: 10px;
+    padding: 2px 6px;
+    width: auto;
+    min-width: 36px;
+}
+
+.NoteGraphPanel {
+    display: none;
+    flex-direction: column;
+    background: #141210;
+    border-top: 2px solid var(--Accent);
+    flex-shrink: 0;
+    max-height: 220px;
+    pointer-events: auto !important;
+    z-index: 5;
+}
+.NoteGraphPanel.Visible,
+.NoteGraphPanel[style*="flex"] {
+    display: flex !important;
+}
+.NoteGraphHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 10px;
+    background: #1a1610;
+    border-bottom: 1px solid #333;
+}
+.NoteGraphHeader span {
+    font-weight: 600;
+    color: var(--Accent);
+    font-size: 12px;
+}
+.NoteGraphHeaderActions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.NoteGraphHint {
+    padding: 4px 10px 6px;
+    font-size: 10px;
+    color: #666;
+}
+#EventGraphWrap {
+    height: 90px;
+    margin: 0 10px 6px;
+    pointer-events: auto !important;
+}
+#EventGraphCanvas {
+    width: 100% !important;
+    height: 90px !important;
+    cursor: crosshair;
+    pointer-events: auto !important;
+}
+
+/* NoteGraphPanel force */
+#NoteGraphPanel.Visible {
+    display: flex !important;
+    min-height: 180px;
+}
+#NoteGraphPanel .EventGraphWrap,
+#EventGraphWrap {
+    min-height: 90px !important;
+    height: 90px !important;
+}
+
+
+/* ========== Connected modern shell ========== */
+:root {
+    --Bg: #121214;
+    --BgRaised: #1c1c1f;
+    --BgPanel: #18181b;
+    --BgInput: #0e0e10;
+    --Border: #2a2a30;
+    --BorderSoft: rgba(255, 255, 255, 0.06);
+    --Text: #ececf1;
+    --TextDim: #8b8b96;
+    --Accent: #ff6a00;
+    --AccentHover: #ff8533;
+    --AccentSoft: rgba(255, 106, 0, 0.14);
+    --SurfaceGlow: rgba(255, 106, 0, 0.04);
+    --Radius: 6px;
+    --RadiusSm: 4px;
+    --Shadow: 0 8px 28px rgba(0, 0, 0, 0.45);
+    --Ease: cubic-bezier(0.22, 1, 0.36, 1);
+    --EaseSnap: cubic-bezier(0.34, 1.4, 0.64, 1);
+}
+
+html, body {
+    background: var(--Bg);
+    color: var(--Text);
+}
+
+.Topbar {
+    background: linear-gradient(180deg, #1a1a1e 0%, #141416 100%);
+    border-bottom: 1px solid var(--BorderSoft);
+    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.03), 0 4px 20px rgba(0, 0, 0, 0.25);
+    backdrop-filter: saturate(1.2);
+}
+
+.TopbarLeft > *,
+.TopbarRight > * {
+    border-radius: 0;
+}
+
+.Workspace {
+    background: var(--Bg);
+    gap: 0;
+}
+
+.Dock {
+    background: var(--BgPanel);
+    border-color: var(--BorderSoft) !important;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+}
+
+.PanelLeft {
+    border-right: 1px solid var(--BorderSoft) !important;
+}
+
+.PanelRight {
+    border-left: 1px solid var(--BorderSoft) !important;
+}
+
+.PanelHeader {
+    background: linear-gradient(180deg, #1c1c20, #161618);
+    border-bottom: 1px solid var(--BorderSoft);
+    letter-spacing: 0.06em;
+}
+
+.Playlist {
+    background: #101012;
+    border-left: 1px solid transparent;
+    border-right: 1px solid transparent;
+}
+
+.PlaylistHeader {
+    background: #161618;
+    border-bottom: 1px solid var(--BorderSoft);
+}
+
+.PlaylistBody {
+    background:
+        radial-gradient(1200px 400px at 50% -10%, var(--SurfaceGlow), transparent 60%),
+        #101012;
+}
+
+.ChannelRow {
+    background: transparent;
+    border-bottom: 1px solid var(--BorderSoft);
+    transition: background 0.18s var(--Ease), box-shadow 0.18s var(--Ease), transform 0.15s var(--Ease);
+}
+
+.ChannelRow:hover {
+    background: rgba(255, 255, 255, 0.03);
+}
+
+.ChannelRow.Selected {
+    background: linear-gradient(90deg, var(--AccentSoft), transparent 70%);
+    box-shadow: inset 2px 0 0 var(--Accent);
+}
+
+.SampleItem {
+    background: transparent;
+    border-bottom: 1px solid var(--BorderSoft);
+    transition: background 0.18s var(--Ease), transform 0.15s var(--Ease);
+}
+
+.SampleItem:hover {
+    background: rgba(255, 255, 255, 0.04);
+}
+
+.BrowserTabs {
+    background: #141416;
+    border-bottom: 1px solid var(--BorderSoft);
+}
+
+.BrowserTab {
+    transition: color 0.18s var(--Ease), border-color 0.18s var(--Ease), background 0.18s var(--Ease);
+}
+
+.BrowserTab.Active {
+    background: linear-gradient(180deg, transparent, var(--AccentSoft));
+}
+
+.BrowserToolbar {
+    background: #161618;
+    border-bottom: 1px solid var(--BorderSoft);
+}
+
+.BrowserToolbar input[type="text"],
+.ModalBody input,
+.PianoToolbar input[type="number"],
+.PianoToolbar select,
+.InputWrapper input {
+    background: var(--BgInput);
+    border: 1px solid var(--Border);
+    border-radius: var(--RadiusSm);
+    transition: border-color 0.18s var(--Ease), box-shadow 0.18s var(--Ease), background 0.18s var(--Ease);
+}
+
+.BrowserToolbar input[type="text"]:focus,
+.ModalBody input:focus,
+.PianoToolbar input[type="number"]:focus,
+.PianoToolbar select:focus,
+.InputWrapper input:focus {
+    border-color: rgba(255, 106, 0, 0.55);
+    box-shadow: 0 0 0 3px var(--AccentSoft);
+    outline: none;
+}
+
+.Button,
+.GhostBtn,
+.UploadBtn,
+.IconBtn {
+    border-radius: var(--RadiusSm);
+    transition: background 0.18s var(--Ease), border-color 0.18s var(--Ease), color 0.18s var(--Ease), transform 0.14s var(--Ease), box-shadow 0.18s var(--Ease);
+}
+
+.Button:hover,
+.GhostBtn:hover,
+.UploadBtn:hover {
+    border-color: rgba(255, 106, 0, 0.35);
+    box-shadow: 0 0 0 1px var(--AccentSoft);
+}
+
+.Button.Primary {
+    border-radius: var(--RadiusSm);
+    box-shadow: 0 2px 12px rgba(255, 106, 0, 0.25);
+}
+
+.PianoDock {
+    background: linear-gradient(180deg, #161618 0%, #121214 100%);
+    border-top: 1px solid var(--BorderSoft);
+    box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.35);
+}
+
+.PianoToolbar {
+    background: #161618;
+    border-bottom: 1px solid var(--BorderSoft);
+}
+
+.PianoKeys {
+    background: linear-gradient(180deg, #141416, #0e0e10);
+}
+
+.ModalOverlay {
+    background: rgba(8, 8, 10, 0.78);
+    backdrop-filter: blur(6px);
+}
+
+.Modal,
+.PianoRollWindow {
+    background: #1a1a1e;
+    border: 1px solid var(--Border);
+    border-radius: 10px;
+    box-shadow: var(--Shadow), 0 0 0 1px rgba(255, 255, 255, 0.03);
+}
+
+.PianoRollHeader,
+.NoteGraphHeader,
+.ModalHeader {
+    background: linear-gradient(180deg, #1e1e22, #18181b);
+    border-bottom: 1px solid var(--BorderSoft);
+}
+
+.NoteGraphPanel {
+    background: linear-gradient(180deg, #1a1612, #141210);
+    border-top: 1px solid rgba(255, 106, 0, 0.45);
+}
+
+.NoteGraphPanel.Visible {
+    animation: GraphSlide 0.22s var(--Ease);
+}
+
+@keyframes GraphSlide {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.DockResize:hover,
+.DockResizeHorizontal:hover {
+    background: var(--Accent) !important;
+    opacity: 0.85;
+}
+
+.RecordButton {
+    transition: background 0.18s var(--Ease), border-color 0.18s var(--Ease), box-shadow 0.18s var(--Ease), transform 0.14s var(--Ease);
+}
+
+.RecordButton:hover {
+    transform: scale(1.06);
+}
+
+.PlayButton,
+.StopButton {
+    transition: opacity 0.18s var(--Ease), transform 0.14s var(--Ease), filter 0.18s var(--Ease);
+}
+
+.PlayButton:hover,
+.StopButton:hover {
+    filter: brightness(1.15);
+    transform: scale(1.05);
+}
+
+*::-webkit-scrollbar-thumb {
+    background: #323238;
+    border-radius: 99px;
+    border: 2px solid #141416;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+    background: #45454e;
+}
+
+.DragGhost {
+    border-radius: var(--Radius);
+    backdrop-filter: blur(8px);
+}
+
+/* Soft connecting seams between docks & playlist */
+.Workspace .Dock,
+.Workspace .Playlist {
+    position: relative;
+}
+
+
+/* Topbar flat controls — no radius, less cramped */
+.Topbar,
+.Topbar * {
+    border-radius: 0 !important;
+}
+
+.Topbar .Button,
+.Topbar .GhostBtn,
+.Topbar .InputWrapper,
+.Topbar .InputWrapper input,
+.Topbar input,
+.Topbar select,
+.Topbar .RecordButton,
+.Topbar .MicButton,
+.Topbar .UserChip,
+.Topbar .SignInButton,
+.Topbar .SignOutButton,
+.Topbar .PublishStatus {
+    border-radius: 0 !important;
+}
+
+.Topbar .RecordButton {
+    border-radius: 50% !important; /* keep the record LED circular */
+}
+
+.TopbarLeft,
+.TopbarRight {
+    gap: 0;
+    align-items: stretch;
+}
+
+.TopbarLeft > *,
+.TopbarRight > * {
+    height: 100%;
+}
+
+.Topbar .InputWrapper,
+.Topbar .InputWrapper input {
+    height: 100%;
+}
+
+.Topbar .Controls {
+    display: flex;
+    align-items: center;
+    height: 100%;
+}
+
+.Topbar .WaveformWrap {
+    border-radius: 0 !important;
+    overflow: hidden;
+}
+
+.Topbar .FxGroup input[type="range"] {
+    border-radius: 0;
+}
+
+
+/* Custom tooltip system */
+.AppTooltip {
+    position: fixed;
+    z-index: 10000;
+    left: 0;
+    top: 0;
+    display: none;
+    pointer-events: none;
+    max-width: 240px;
+    padding: 6px 8px;
+    background: #1a1a1e;
+    border: 1px solid #3a3a42;
+    color: #ececf1;
+    font-size: 11px;
+    line-height: 1.35;
+    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255, 255, 255, 0.04);
+    opacity: 0;
+    transform: translateY(4px);
+    transition: opacity 0.12s cubic-bezier(0.22, 1, 0.36, 1),
+                transform 0.12s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.AppTooltip.Visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.AppTooltipText {
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+.AppTooltipCanvas {
+    display: block;
+    margin-top: 4px;
+    border-radius: 2px;
+    background: #0c0c0c;
+}
+
+.AppTooltipText:empty {
+    display: none;
+}

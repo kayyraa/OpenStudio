@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-analytics-compat.js"></script>
+    <link rel="shortcut icon" href="Assets/Images/Open Studio.svg" type="image/x-icon">
+    <link rel="stylesheet" href="Scripts/Style/Style.css">
+    <script src="Scripts/Cloud.js"></script>
+    <script src="Scripts/AudioEngine.js"></script>
+    <script src="Scripts/Plugins.js"></script>
+    <script src="Scripts/Global.d.js" defer></script>
+    <title>Open Studio</title>
+</head>
+<body>
+    <div class="Topbar">
+        <div class="TopbarLeft">
+            <img class="Logo" src="Assets/Images/Open Studio.svg" alt="Open Studio">
+            <div class="InputWrapper ProjectNameWrap">
+                <input type="text" id="ProjectName" value="Untitled Project">
+            </div>
+            <div class="Controls">
+                <button type="button" class="RecordButton" id="RecordButton" title="Record MIDI notes (starts playback)" aria-label="Record"></button>
+                <button style="min-width: 4em; width: 4em;" type="button" class="MicButton" id="MicButton" title="Record microphone" aria-label="Mic">MIC</button>
+                <img class="PlayButton" src="Assets/Images/Play.svg" alt="Play" title="Play / Pause (Space)">
+                <img class="StopButton" src="Assets/Images/Stop.svg" alt="Stop" title="Stop">
+            </div>
+            <div class="TempoGroup">
+                <span>Tempo:</span>
+                <div class="InputWrapper">
+                    <input class="Tempo" type="number" min="10" max="522" value="120">
+                </div>
+                <div class="TempoBubble"></div>
+            </div>
+            <div class="TimeGroup">
+                <span class="TimeLabel">00:00,000</span>
+            </div>
+            <div class="FxGroup">
+                <input type="range" id="FxFilter" min="0" max="100" value="100" title="Filter">
+                <input type="range" id="FxDelay" min="0" max="100" value="0" title="Delay">
+                <input type="range" id="FxReverb" min="0" max="100" value="0" title="Reverb">
+            </div>
+            <div class="WaveformWrap">
+                <canvas id="WaveformCanvas"></canvas>
+                            </div>
+        </div>
+        <div class="TopbarRight">
+            <button type="button" class="Button" id="PublishBtn" title="Publish project to cloud">Publish</button>
+            <span id="PublishStatus" class="PublishStatus"></span>
+
+            <div class="Button SignInButton" id="SignInButton">Sign In</div>
+            <div class="UserChip" id="UserChip" style="display: none;">
+                <img class="Profile" id="ProfileImg" alt="">
+                <span id="DisplayNameLabel"></span>
+                <div class="Button SignOutButton" id="SignOutButton">Sign Out</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="Workspace" id="Workspace">
+        <aside class="Dock PanelLeft" id="DockLeft" data-dock="left" style="width: 200px;">
+            <div class="PanelHeader">
+                <span>Channel Rack</span>
+                <div class="HeaderActions">
+                    <button class="IconBtn" id="AddChannelBtn" title="Add channel">+</button>
+                    <button class="IconBtn" id="ToggleLeftDock" title="Collapse">–</button>
+                </div>
+            </div>
+            <div class="ChannelList" id="ChannelList"></div>
+            <div class="DockResize" data-side="left"></div>
+        </aside>
+
+        <main class="Playlist" id="Playlist">
+            <div class="PlaylistHeader">
+                <canvas id="RulerCanvas" height="26"></canvas>
+            </div>
+            <div class="PlaylistBody" id="PlaylistBody">
+                <canvas id="TimelineCanvas"></canvas>
+            </div>
+        </main>
+
+        <aside class="Dock PanelRight" id="DockRight" data-dock="right" style="width: 240px;">
+            <div class="DockResize" data-side="right"></div>
+            <div class="PanelHeader">
+                <span>Browser</span>
+                <button class="IconBtn" id="RefreshBrowserBtn" title="Refresh">R</button>
+            </div>
+            <div class="BrowserTabs">
+                <button type="button" class="BrowserTab Active" data-tab="samples" id="TabSamples">Samples</button>
+                <button type="button" class="BrowserTab" data-tab="projects" id="TabProjects">Projects</button>
+            </div>
+            <div class="BrowserToolbar" id="SampleToolbar">
+                <input type="text" id="BrowserSearch" placeholder="Search samples...">
+                <label class="UploadBtn" title="Upload audio">
+                    Upload
+                    <input type="file" id="FileUpload" accept="audio/*,.mp3,.wav,.ogg,.flac" hidden>
+                </label>
+            </div>
+            <div class="BrowserToolbar" id="ProjectToolbar" style="display:none;">
+                <input type="text" id="ProjectSearch" placeholder="Search projects...">
+            </div>
+            <div class="SampleList" id="SampleList"></div>
+            <div class="SampleList" id="ProjectList" style="display:none;"></div>
+            <div class="UploadStatus" id="UploadStatus"></div>
+        </aside>
+    </div>
+
+    <div class="PianoDock" id="PianoDock">
+        <div class="DockResizeHorizontal" id="PianoResize" title="Drag to resize piano"></div>
+        <div class="PianoToolbar">
+            <button type="button" class="IconBtn" id="TogglePianoDock" title="Minimize piano">–</button>
+            <span class="PianoTitle">Piano</span>
+            <span class="PianoHint">Z/X octave · A–K keys · Select a channel first</span>
+            <div class="PianoSpacer"></div>
+            <label title="Octave">Oct <input type="number" id="PianoOctave" min="0" max="8" value="4"></label>
+            <label title="Velocity">Vel <input type="range" id="PianoVel" min="1" max="100" value="80"></label>
+            <select id="PluginWave" title="Waveform">
+                <option value="sawtooth">Saw</option>
+                <option value="square">Square</option>
+                <option value="triangle">Triangle</option>
+                <option value="sine">Sine</option>
+            </select>
+            <label title="Attack">A <input type="range" id="PianoAtk" min="1" max="100" value="5"></label>
+            <label title="Decay">D <input type="range" id="PianoDec" min="1" max="100" value="20"></label>
+            <label title="Sustain">S <input type="range" id="PianoSus" min="0" max="100" value="70"></label>
+            <label title="Release">R <input type="range" id="PianoRel" min="1" max="100" value="25"></label>
+            <label title="Filter">Cut <input type="range" id="PianoCut" min="5" max="100" value="60"></label>
+            <label title="Portamento / Glide">Glide <input type="range" id="PianoGlide" min="0" max="100" value="16"></label>
+            <button type="button" id="OpenPianoRollBtn" class="GhostBtn" title="Open piano roll editor">Edit notes</button>
+            <button type="button" id="ClearNotesBtn" class="GhostBtn" title="Clear recorded notes on selected channel">Clear notes</button>
+        </div>
+        <div class="PianoKeys" id="PianoKeys"></div>
+    </div>
+
+    <div class="PluginMenu" id="PluginMenu" style="display:none;">
+        <button data-plugin="empty">Empty channel (Synth)</button>
+        <button data-plugin="grand">Grand Piano</button>
+        <button data-plugin="epiano">E-Piano</button>
+        <button data-plugin="synth">3x Osc</button>
+        <button data-plugin="keys">Keys</button>
+        <button data-plugin="bass">Bass</button>
+        <button data-plugin="pluck">Pluck</button>
+        <button data-plugin="sampler">Sampler (pick sample in browser)</button>
+    </div>
+
+    <div class="DragGhost" id="DragGhost"></div>
+
+    <div class="ModalOverlay" id="PianoRollModal" style="display:none;">
+        <div class="PianoRollWindow">
+            <div class="PianoRollHeader">
+                <span id="PianoRollTitle">Piano Roll</span>
+                <div class="PianoRollHeaderActions">
+                    <label>Snap
+                        <select id="PianoRollSnap">
+                            <option value="0.25">1/4</option>
+                            <option value="0.125" selected>1/8</option>
+                            <option value="0.0625">1/16</option>
+                            <option value="0.03125">1/32</option>
+                        </select>
+                    </label>
+                    <button type="button" class="GhostBtn" id="PianoRollClear">Clear notes</button>
+                    <button type="button" class="IconBtn" id="PianoRollClose" title="Close">x</button>
+                </div>
+            </div>
+            <div class="PianoRollBody">
+                <div class="PianoRollKeys" id="PianoRollKeys"></div>
+                <div class="PianoRollGridWrap" id="PianoRollGridWrap">
+                    <canvas id="PianoRollCanvas"></canvas>
+                </div>
+            </div>
+            <div class="NoteGraphPanel" id="NoteGraphPanel" style="display:none;">
+                <div class="NoteGraphHeader">
+                    <span id="NoteGraphTitle">Note events</span>
+                    <div class="NoteGraphHeaderActions">
+                        <select id="EventGraphParam" title="Per-note parameter">
+                            <option value="Cutoff">Cutoff</option>
+                            <option value="Resonance">Resonance</option>
+                            <option value="Mix">Mix Level</option>
+                            <option value="Pan">Pan</option>
+                            <option value="Glide">Glide</option>
+                        </select>
+                        <button type="button" class="GhostBtn" id="EventGraphReset">Reset</button>
+                        <button type="button" class="IconBtn" id="NoteGraphClose" title="Close graph">x</button>
+                    </div>
+                </div>
+                <div class="NoteInspector" id="NoteInspector">
+                    <label>Vel <input type="range" id="NoteVel" min="1" max="100" value="80"></label>
+                    <label>Len <input type="range" id="NoteLen" min="1" max="64" value="4"></label>
+                    <span id="NoteInspectorInfo">Double-click a note to edit</span>
+                </div>
+                <div class="EventGraphWrap" id="EventGraphWrap">
+                    <canvas id="EventGraphCanvas"></canvas>
+                </div>
+                <div class="NoteGraphHint">Click graph to add points · Drag points · Right-click delete · Values apply on playback</div>
+            </div>
+            <div class="PianoRollFooter">
+                <span class="PianoRollHint">Drag on grid to paint notes · Drag notes to move · Edges resize · Hold keys for long notes · Scroll for octaves</span>
+            </div>
+        </div>
+    </div>
+
+
+    <div class="ModalOverlay" id="SignInModal" style="display: none;">
+        <div class="Modal">
+            <div class="ModalHeader">
+                <span>Sign In</span>
+                <button class="IconBtn CloseModal" data-modal="SignInModal">x</button>
+            </div>
+            <div class="ModalBody">
+                <label>Username</label>
+                <input type="text" id="LoginUsername" placeholder="Username" autocomplete="username">
+                <label>Password</label>
+                <input type="password" id="LoginPassword" placeholder="Password" autocomplete="current-password">
+                <div class="ModalError" id="LoginError"></div>
+                <button class="Button Primary" id="LoginSubmit">Sign In</button>
+                <p class="ModalHint">No account? <a href="#" id="ShowRegister">Create one</a></p>
+            </div>
+        </div>
+    </div>
+
+    <div class="ModalOverlay" id="RegisterModal" style="display: none;">
+        <div class="Modal">
+            <div class="ModalHeader">
+                <span>Create Account</span>
+                <button class="IconBtn CloseModal" data-modal="RegisterModal">x</button>
+            </div>
+            <div class="ModalBody">
+                <label>Username</label>
+                <input type="text" id="RegUsername" placeholder="Username">
+                <label>Display Name</label>
+                <input type="text" id="RegDisplayName" placeholder="Display name">
+                <label>Password</label>
+                <input type="password" id="RegPassword" placeholder="Password">
+                <label>Avatar URL (optional)</label>
+                <input type="text" id="RegImage" placeholder="https://...">
+                <div class="ModalError" id="RegError"></div>
+                <button class="Button Primary" id="RegisterSubmit">Create Account</button>
+                <p class="ModalHint">Already have an account? <a href="#" id="ShowLogin">Sign in</a></p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
