@@ -31,6 +31,7 @@ var State = {
     MouseHolds: {},
     KeyHolds: {},
     MicStartBeat: null,
+    LocalBlobs: {},
     Scrubbing: false,
     PianoRoll: {
         Open: false,
@@ -1423,7 +1424,7 @@ function BindTimelineEvents() {
             RenderChannels();
             UpdateWaveformSource();
         } else {
-            // Seek / scrub ╬ô├ç├╢ do not create clips on single click
+            // Seek / scrub - do not create clips on single click
             StartTimelineScrub(Event);
         }
     });
@@ -1831,7 +1832,7 @@ function NoteInputOn(Note, Source, Options) {
         State.KeyHolds[Note] = true;
     }
 
-    // Already sounding from either source ╬ô├ç├╢ do not re-trigger
+    // Already sounding from either source - do not re-trigger
     if (State.ActiveVoices[Note] && !Options.Force) {
         return;
     }
@@ -1933,7 +1934,7 @@ function NoteInputOff(Note, Source) {
         delete State.KeyHolds[Note];
     }
 
-    // Still held by the other input source ╬ô├ç├╢ keep sounding
+    // Still held by the other input source - keep sounding
     if (IsNoteHeld(Note)) return;
 
     var Armed = State.RecordArm[Note];
@@ -2205,17 +2206,28 @@ function BindDockCollapse() {
     function ApplyCollapsed(Dock, Collapsed, Side) {
         if (!Dock) return;
         if (Collapsed) {
+            if (Side === "left" || Side === "right") {
+                try {
+                    localStorage.setItem(Side === "left" ? "OsDockLeft" : "OsDockRight", String(Dock.offsetWidth || 240));
+                } catch (_) {}
+            }
             Dock.classList.add("Collapsed");
             if (Side === "left" || Side === "right") {
-                Dock.style.width = "28px";
+                Dock.style.width = "36px";
+                Dock.style.minWidth = "36px";
+                Dock.style.maxWidth = "36px";
             }
         } else {
             Dock.classList.remove("Collapsed");
             if (Side === "left") {
                 Dock.style.width = localStorage.getItem("OsDockLeft") || "240px";
+                Dock.style.minWidth = "";
+                Dock.style.maxWidth = "";
             }
             if (Side === "right") {
                 Dock.style.width = localStorage.getItem("OsDockRight") || "260px";
+                Dock.style.minWidth = "";
+                Dock.style.maxWidth = "";
             }
         }
         ResizeCanvases();
@@ -2427,13 +2439,14 @@ function PublishProject() {
     }
 
     var Username = State.User.Username || State.User.DisplayName;
-    var Payload = SerializeProject();
-    Payload.Author = Username;
-
     var Status = document.querySelector("#PublishStatus");
     if (Status) Status.textContent = "Saving...";
 
-    SaveProject(Payload, { CurrentUser: Username }).then(function (Result) {
+    UploadLocalMicTakes(Username).then(function () {
+        var Payload = SerializeProject();
+        Payload.Author = Username;
+        return SaveProject(Payload, { CurrentUser: Username });
+    }).then(function (Result) {
         State.ProjectId = Result.Id;
         if (Status) Status.textContent = "Saved";
         setTimeout(function () {
@@ -2446,6 +2459,43 @@ function PublishProject() {
         if (Status) Status.textContent = "Save failed";
         alert(Error.message || "Save failed");
     });
+}
+
+function UploadLocalMicTakes(Username) {
+    if (!State.LocalBlobs) State.LocalBlobs = {};
+    var Tasks = [];
+    var Index;
+    var Channel;
+    var Key;
+    var Entry;
+    var LocalKey;
+
+    for (Index = 0; Index < State.Channels.length; Index++) {
+        Channel = State.Channels[Index];
+        Key = Channel.SampleUrl || "";
+        if (Key.indexOf("mic:") !== 0) continue;
+        Entry = State.LocalBlobs[Key];
+        if (!Entry || !Entry.Blob) continue;
+        LocalKey = Key;
+        Tasks.push((function (Ch, LocalKey, Entry) {
+            return UploadSample(Entry.Blob, {
+                Author: Username || "anonymous",
+                Name: Entry.Name || Ch.Name || "Mic Take",
+                Genre: "Recording",
+                Mime: Entry.Mime || Entry.Blob.type || "audio/webm"
+            }).then(function (Result) {
+                var Url = Result.File || Result.DownloadUrl;
+                var Buffer = Engine.Buffers.get(LocalKey);
+                if (Buffer) Engine.RegisterBuffer(Url, Buffer);
+                Ch.SampleUrl = Url;
+                if (Ch.Plugin) Ch.Plugin.SampleUrl = Url;
+                delete State.LocalBlobs[LocalKey];
+                return Result;
+            });
+        })(Channel, LocalKey, Entry));
+    }
+
+    return Promise.all(Tasks);
 }
 
 function ApplyLoadedProject(Doc) {
@@ -2542,15 +2592,22 @@ function ToggleMicRecord() {
 
     if (Engine.MicRecording) {
         var StartBeat = State.MicStartBeat != null ? State.MicStartBeat : Engine.SecondsToBeats(State.Simulation.Time || 0);
-        Engine.StopMicCapture().then(function (Buffer) {
+        Engine.StopMicCapture().then(function (Result) {
             if (Btn) Btn.classList.remove("Active");
             State.MicStartBeat = null;
-            if (!Buffer) {
+            if (!Result || !Result.Buffer) {
                 alert("Could not capture microphone audio.");
                 return;
             }
+            var Buffer = Result.Buffer;
             var Key = "mic:" + Guid();
             Engine.RegisterBuffer(Key, Buffer);
+            if (!State.LocalBlobs) State.LocalBlobs = {};
+            State.LocalBlobs[Key] = {
+                Blob: Result.Blob,
+                Mime: Result.Mime || "audio/webm",
+                Name: "Mic Take"
+            };
             var DurBeats = Math.max(0.25, Engine.SecondsToBeats(Buffer.duration));
             var Sample = {
                 Name: "Mic Take",
@@ -2674,7 +2731,7 @@ function OpenNoteGraphEditor(ChannelId, NoteIndex) {
     var Title = document.querySelector("#NoteGraphTitle");
     if (Title) {
         var Nn = Channel.Notes[NoteIndex];
-        Title.textContent = "Note Γö¼Γòû " + MidiNoteName(Nn.Note) + " @ " +
+        Title.textContent = "Note " + MidiNoteName(Nn.Note) + " @ " +
             (Math.round((Nn.Beat || 0) * 100) / 100);
     }
 
@@ -2961,7 +3018,7 @@ function OpenPianoRoll(ChannelId) {
     State.PianoRoll.GraphDrag = null;
 
     var Title = document.querySelector("#PianoRollTitle");
-    if (Title) Title.textContent = "Piano Roll ╬ô├ç├╢ " + Channel.Name;
+    if (Title) Title.textContent = "Piano Roll - " + Channel.Name;
 
     var Modal = document.querySelector("#PianoRollModal");
     if (!Modal) {
@@ -3396,6 +3453,8 @@ function BindEffects() {
     var FilterEl = document.querySelector("#FxFilter");
     var DelayEl = document.querySelector("#FxDelay");
     var ReverbEl = document.querySelector("#FxReverb");
+    var CompEl = document.querySelector("#FxComp");
+    var MasterEl = document.querySelector("#FxMaster");
 
     if (FilterEl) {
         FilterEl.addEventListener("input", function () {
@@ -3414,6 +3473,29 @@ function BindEffects() {
         ReverbEl.addEventListener("input", function () {
             Engine.EnsureCtx();
             Engine.SetReverbMix(Number(ReverbEl.value) / 100);
+        });
+    }
+    if (CompEl) {
+        CompEl.addEventListener("input", function () {
+            Engine.EnsureCtx();
+            var Amt = Number(CompEl.value) / 100;
+            if (Engine.Compressor) {
+                Engine.Compressor.threshold.value = -6 - Amt * 24;
+                Engine.Compressor.ratio.value = 2 + Amt * 10;
+                Engine.Compressor.knee.value = 20 - Amt * 12;
+            }
+        });
+    }
+    if (MasterEl) {
+        MasterEl.addEventListener("input", function () {
+            Engine.EnsureCtx();
+            if (Engine.Master) {
+                Engine.Master.gain.setTargetAtTime(
+                    Math.max(0, Math.min(1.2, Number(MasterEl.value) / 100)),
+                    Engine.Ctx.currentTime,
+                    0.02
+                );
+            }
         });
     }
 }
@@ -3470,16 +3552,22 @@ function RenderChannels() {
         Row = document.createElement("div");
         Row.className = "ChannelRow" + (Selected ? " Selected" : "");
         Row.setAttribute("data-id", Channel.Id);
+        var GainPct = Math.round((Channel.Gain == null ? 1 : Channel.Gain) * 100);
         Row.innerHTML =
             '<div class="ChannelColor" style="background:' + Channel.Color + '"></div>' +
             '<div class="ChannelMain">' +
             '<div class="ChannelInfo">' +
             '<span class="ChannelName" title="' + Channel.Name + '">' + Channel.Name + '</span>' +
             '</div>' +
+            '<div class="ChannelVolRow">' +
+            '<span class="ChannelVolLabel">Vol</span>' +
+            '<input type="range" class="ChannelVol" min="0" max="100" value="' + GainPct + '" title="Channel volume">' +
+            '</div>' +
             '<div class="StepGrid"></div>' +
             '</div>' +
             '<button class="StretchBtn' + (Channel.StretchToClip ? ' Active' : '') + '" title="Stretch to clip length">S</button>' +
             '<button class="MuteBtn' + (Channel.Muted ? ' Active' : '') + '" title="Mute">M</button>' +
+            '<button class="SaveSampleBtn" title="Save channel as sample">S+</button>' +
             '<button class="RemoveChannelBtn" title="Remove">x</button>';
         BindChannelRow(Row, Channel);
         RenderStepGrid(Row.querySelector(".StepGrid"), Channel);
@@ -3490,6 +3578,7 @@ function RenderChannels() {
 function BindChannelRow(Row, Channel) {
     Row.addEventListener("mousedown", function (Event) {
         if (Event.target.closest("button")) return;
+        if (Event.target.closest("input")) return;
         if (Event.button !== 0) return;
         State.SelectedChannelId = Channel.Id;
         RenderChannels();
@@ -3531,6 +3620,25 @@ function BindChannelRow(Row, Channel) {
     Row.querySelector(".ChannelName").addEventListener("dblclick", function () {
         PlaceClipOnChannel(Channel, Engine.SecondsToBeats(State.Simulation.Time));
     });
+
+    var VolEl = Row.querySelector(".ChannelVol");
+    if (VolEl) {
+        VolEl.addEventListener("mousedown", function (Event) { Event.stopPropagation(); });
+        VolEl.addEventListener("click", function (Event) { Event.stopPropagation(); });
+        VolEl.addEventListener("input", function (Event) {
+            Event.stopPropagation();
+            Channel.Gain = Math.max(0, Math.min(1, Number(VolEl.value) / 100));
+            if (State.Simulation.Playing) RescheduleTransport();
+        });
+    }
+
+    var SaveSampleBtn = Row.querySelector(".SaveSampleBtn");
+    if (SaveSampleBtn) {
+        SaveSampleBtn.addEventListener("click", function (Event) {
+            Event.stopPropagation();
+            SaveChannelAsSample(Channel);
+        });
+    }
 }
 
 function PlaceClipOnChannel(Channel, StartBeat) {
@@ -3601,8 +3709,8 @@ function RenderProjectList() {
             '<span class="SampleName">' + EscapeHtml(Project.Name || "Untitled") + '</span>' +
             '<span class="SampleSub">' +
             EscapeHtml(Project.Author || "?") +
-            (IsMine ? " ┬╖ yours" : "") +
-            " ┬╖ " + ((Project.Channels && Project.Channels.length) || 0) + " ch" +
+            (IsMine ? " · yours" : "") +
+            " · " + ((Project.Channels && Project.Channels.length) || 0) + " ch" +
             '</span>' +
             '</div>' +
             '<div class="SampleActions">' +
@@ -3719,16 +3827,20 @@ function RenderSampleList() {
         Sample = Filtered[Index];
         Item = document.createElement("div");
         Item.className = "SampleItem";
+        var Username = State.User ? (State.User.Username || State.User.DisplayName || "") : "";
+        var IsMine = Username && String(Sample.Author || "") === String(Username);
         Item.innerHTML =
             '<div class="SampleMeta">' +
             '<span class="SampleName">' + EscapeHtml(Sample.Name || "Untitled") + '</span>' +
             '<span class="SampleSub">' +
             EscapeHtml(Sample.Author || "?") + ' - ' + EscapeHtml(Sample.Genre || "") +
+            (IsMine ? " · yours" : "") +
             '</span>' +
             '</div>' +
             '<div class="SampleActions">' +
             '<button class="IconBtn PreviewBtn" title="Preview">></button>' +
             '<button class="IconBtn AddBtn" title="Add To Channel Rack">+</button>' +
+            (IsMine ? '<button class="IconBtn DeleteSampleBtn" title="Delete sample">x</button>' : "") +
             '</div>';
         BindSampleItem(Item, Sample);
         SampleList.appendChild(Item);
@@ -3761,6 +3873,149 @@ function BindSampleItem(Item, Sample) {
             alert("Could Not Preview: " + Error.message);
         });
     });
+
+    var Del = Item.querySelector(".DeleteSampleBtn");
+    if (Del) {
+        Del.addEventListener("click", function (Event) {
+            Event.preventDefault();
+            Event.stopPropagation();
+            if (!State.User) {
+                alert("Sign in to delete samples.");
+                return;
+            }
+            ShowConfirmModal(
+                "Delete sample \"" + (Sample.Name || "Untitled") + "\"? This cannot be undone.",
+                function () {
+                    var Username = State.User.Username || State.User.DisplayName;
+                    DeleteSample(Sample.Id, Username).then(function () {
+                        RefreshBrowser();
+                    }).catch(function (Err) {
+                        alert(Err.message || "Delete failed");
+                    });
+                }
+            );
+        });
+    }
+}
+
+function AudioBufferToWavBlob(Buffer) {
+    var NumCh = Buffer.numberOfChannels;
+    var SampleRate = Buffer.sampleRate;
+    var NumFrames = Buffer.length;
+    var BytesPerSample = 2;
+    var BlockAlign = NumCh * BytesPerSample;
+    var DataSize = NumFrames * BlockAlign;
+    var ArrayBuf = new ArrayBuffer(44 + DataSize);
+    var View = new DataView(ArrayBuf);
+    var Offset = 0;
+    function WriteStr(Str) {
+        var I;
+        for (I = 0; I < Str.length; I++) View.setUint8(Offset + I, Str.charCodeAt(I));
+        Offset += Str.length;
+    }
+    function WriteU32(V) { View.setUint32(Offset, V, true); Offset += 4; }
+    function WriteU16(V) { View.setUint16(Offset, V, true); Offset += 2; }
+    WriteStr("RIFF");
+    WriteU32(36 + DataSize);
+    WriteStr("WAVE");
+    WriteStr("fmt ");
+    WriteU32(16);
+    WriteU16(1);
+    WriteU16(NumCh);
+    WriteU32(SampleRate);
+    WriteU32(SampleRate * BlockAlign);
+    WriteU16(BlockAlign);
+    WriteU16(16);
+    WriteStr("data");
+    WriteU32(DataSize);
+    var Ch;
+    var Channels = [];
+    for (Ch = 0; Ch < NumCh; Ch++) Channels.push(Buffer.getChannelData(Ch));
+    var Frame;
+    var Sample;
+    var Clamped;
+    for (Frame = 0; Frame < NumFrames; Frame++) {
+        for (Ch = 0; Ch < NumCh; Ch++) {
+            Sample = Channels[Ch][Frame];
+            Clamped = Math.max(-1, Math.min(1, Sample));
+            View.setInt16(Offset, Clamped < 0 ? Clamped * 0x8000 : Clamped * 0x7FFF, true);
+            Offset += 2;
+        }
+    }
+    return new Blob([ArrayBuf], { type: "audio/wav" });
+}
+
+function SaveChannelAsSample(Channel) {
+    if (!State.User) {
+        alert("Sign in to save samples.");
+        ShowModal("SignInModal");
+        return;
+    }
+    if (!Channel || !Channel.SampleUrl) {
+        alert("No sample on this channel.");
+        return;
+    }
+    var Username = State.User.Username || State.User.DisplayName || "user";
+    var Status = document.querySelector("#UploadStatus") || document.querySelector("#PublishStatus");
+    if (Status) {
+        Status.textContent = "Saving sample...";
+        Status.className = "UploadStatus Busy";
+    }
+
+    function FinishUpload(BlobData, Name) {
+        return UploadSample(BlobData, {
+            Author: Username,
+            Name: Name || Channel.Name || "Channel Sample",
+            Genre: "From Project",
+            Mime: BlobData.type || "audio/wav"
+        }).then(function (Result) {
+            if (Status) {
+                Status.textContent = "Saved sample: " + Result.Name;
+                Status.className = "UploadStatus Ok";
+            }
+            RefreshBrowser();
+            return Result;
+        });
+    }
+
+    var Key = Channel.SampleUrl;
+    if (State.LocalBlobs && State.LocalBlobs[Key] && State.LocalBlobs[Key].Blob) {
+        FinishUpload(State.LocalBlobs[Key].Blob, Channel.Name).catch(function (Err) {
+            if (Status) {
+                Status.textContent = "Save failed";
+                Status.className = "UploadStatus Err";
+            }
+            alert(Err.message || "Save failed");
+        });
+        return;
+    }
+
+    var Buffer = Engine.Buffers.get(Key);
+    if (Buffer) {
+        FinishUpload(AudioBufferToWavBlob(Buffer), Channel.Name).catch(function (Err) {
+            if (Status) {
+                Status.textContent = "Save failed";
+                Status.className = "UploadStatus Err";
+            }
+            alert(Err.message || "Save failed");
+        });
+        return;
+    }
+
+    if (Key.indexOf("http") === 0) {
+        Engine.LoadSample(Key).then(function (Buf) {
+            return FinishUpload(AudioBufferToWavBlob(Buf), Channel.Name);
+        }).catch(function (Err) {
+            if (Status) {
+                Status.textContent = "Save failed";
+                Status.className = "UploadStatus Err";
+            }
+            alert(Err.message || "Save failed");
+        });
+        return;
+    }
+
+    alert("Could not resolve channel audio for upload.");
 }
 
 function BindBrowser() {

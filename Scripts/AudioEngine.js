@@ -10,6 +10,9 @@ globalThis.AudioEngine = class {
         this.ReverbGain = null;
         this.Convolver = null;
         this.Analyser = null;
+        this.Compressor = null;
+        this.Limiter = null;
+        this.MaxVoices = 48;
         this.Buffers = new Map();
         this.Loading = new Map();
         this.Sources = [];
@@ -38,12 +41,26 @@ globalThis.AudioEngine = class {
             this.Ctx = new (window.AudioContext || window.webkitAudioContext)();
 
             this.Master = this.Ctx.createGain();
-            this.Master.gain.value = 1;
+            this.Master.gain.value = 0.85;
 
             this.Filter = this.Ctx.createBiquadFilter();
             this.Filter.type = "lowpass";
             this.Filter.frequency.value = this.FilterFreq;
             this.Filter.Q.value = 0.7;
+
+            this.Compressor = this.Ctx.createDynamicsCompressor();
+            this.Compressor.threshold.value = -18;
+            this.Compressor.knee.value = 12;
+            this.Compressor.ratio.value = 4;
+            this.Compressor.attack.value = 0.005;
+            this.Compressor.release.value = 0.18;
+
+            this.Limiter = this.Ctx.createDynamicsCompressor();
+            this.Limiter.threshold.value = -3;
+            this.Limiter.knee.value = 0;
+            this.Limiter.ratio.value = 20;
+            this.Limiter.attack.value = 0.001;
+            this.Limiter.release.value = 0.08;
 
             this.Analyser = this.Ctx.createAnalyser();
             this.Analyser.fftSize = 2048;
@@ -62,18 +79,20 @@ globalThis.AudioEngine = class {
             this.ReverbGain.gain.value = this.ReverbMix;
 
             this.Master.connect(this.Filter);
-            this.Filter.connect(this.Analyser);
+            this.Filter.connect(this.Compressor);
+            this.Compressor.connect(this.Limiter);
+            this.Limiter.connect(this.Analyser);
             this.Analyser.connect(this.Ctx.destination);
 
             this.Filter.connect(this.Delay);
             this.Delay.connect(this.DelayFeedback);
             this.DelayFeedback.connect(this.Delay);
             this.Delay.connect(this.DelayGain);
-            this.DelayGain.connect(this.Ctx.destination);
+            this.DelayGain.connect(this.Limiter);
 
             this.Filter.connect(this.Convolver);
             this.Convolver.connect(this.ReverbGain);
-            this.ReverbGain.connect(this.Ctx.destination);
+            this.ReverbGain.connect(this.Limiter);
         }
 
         if (this.Ctx.state === "suspended") {
@@ -288,6 +307,18 @@ globalThis.AudioEngine = class {
         };
     }
 
+
+    PruneSources() {
+        var Max = this.MaxVoices || 48;
+        if (this.Sources.length <= Max) return;
+        var Extra = this.Sources.length - Max;
+        var Index;
+        for (Index = 0; Index < Extra; Index++) {
+            try { this.Sources[Index].stop(); } catch (_) {}
+        }
+        this.Sources = this.Sources.slice(Extra);
+    }
+
     ScheduleClips(Clips, SongTimeSeconds) {
         this.EnsureCtx();
         this.StopSources();
@@ -326,7 +357,9 @@ globalThis.AudioEngine = class {
             Source.playbackRate.value = Rate;
 
             Gain = this.Ctx.createGain();
-            Gain.gain.value = Clip.Gain == null ? 1 : Clip.Gain;
+            var BaseGain = Clip.Gain == null ? 1 : Clip.Gain;
+            var VoiceScale = Math.min(1, 1 / Math.sqrt(Math.max(1, Clips.length * 0.35)));
+            Gain.gain.value = BaseGain * VoiceScale;
 
             Source.connect(Gain);
             Gain.connect(this.Master);
@@ -346,6 +379,7 @@ globalThis.AudioEngine = class {
             try {
                 Source.start(When, Offset, Math.max(0, MaxDuration - Offset / Rate));
                 this.Sources.push(Source);
+                this.PruneSources();
             } catch (Error) {
                 console.warn("Schedule failed", Error);
             }
@@ -379,7 +413,9 @@ globalThis.AudioEngine = class {
             Source.playbackRate.value = Step.PlaybackRate || 1;
 
             Gain = this.Ctx.createGain();
-            Gain.gain.value = Step.Gain == null ? 1 : Step.Gain;
+            var BaseGain = Step.Gain == null ? 1 : Step.Gain;
+            var VoiceScale = Math.min(1, 1 / Math.sqrt(Math.max(1, Steps.length * 0.25)));
+            Gain.gain.value = BaseGain * VoiceScale;
 
             Source.connect(Gain);
             Gain.connect(this.Master);
@@ -390,6 +426,7 @@ globalThis.AudioEngine = class {
             try {
                 Source.start(When);
                 this.Sources.push(Source);
+                this.PruneSources();
             } catch (Error) {
                 console.warn("Step schedule failed", Error);
             }
@@ -466,7 +503,8 @@ globalThis.AudioEngine = class {
             Self.MicRecorder.onstop = async function () {
                 Self.MicRecording = false;
                 try {
-                    var BlobData = new Blob(Self.MicChunks, { type: Self.MicMime || "audio/webm" });
+                    var Mime = Self.MicMime || "audio/webm";
+                    var BlobData = new Blob(Self.MicChunks, { type: Mime });
                     if (!BlobData.size) {
                         Self.StopMicMonitor();
                         Resolve(null);
@@ -475,7 +513,11 @@ globalThis.AudioEngine = class {
                     var ArrayBuffer = await BlobData.arrayBuffer();
                     var Buffer = await Self.Ctx.decodeAudioData(ArrayBuffer.slice(0));
                     Self.StopMicMonitor();
-                    Resolve(Buffer);
+                    Resolve({
+                        Buffer: Buffer,
+                        Blob: BlobData,
+                        Mime: Mime
+                    });
                 } catch (Error) {
                     console.warn("Mic decode failed", Error);
                     Self.StopMicMonitor();

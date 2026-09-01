@@ -55,7 +55,7 @@
         <div class="TopbarLeft">
             <img class="Logo" src="Assets/Images/Open Studio.svg" alt="Open Studio">
             <button type="button" class="Button NewProjectBtn" id="NewProjectBtn" title="Open New Empty Project">
-                <span class="NewProjectIcon">📄</span>
+                <span class="NewProjectIcon">+</span>
             </button>
             <div class="InputWrapper ProjectNameWrap">
                 <input type="text" id="ProjectName" value="Untitled Project">
@@ -74,7 +74,7 @@
                 <div class="TempoBubble"></div>
             </div>
             <div class="MetronomeGroup">
-                <button type="button" class="MetroBtn" id="MetronomeBtn" title="Metronome">♪</button>
+                <button type="button" class="MetroBtn" id="MetronomeBtn" title="Metronome">MET</button>
                 <label class="MetroVolLabel" title="Metronome volume">Vol <input type="range" id="MetronomeVolume" min="0" max="100" value="70"></label>
                 <button type="button" class="CountInBtn" id="CountInBtn" title="Count-In (4 beats)">1-2-3-4</button>
             </div>
@@ -82,9 +82,11 @@
                 <span class="TimeLabel">00:00,000</span>
             </div>
             <div class="FxGroup">
-                <input type="range" id="FxFilter" min="0" max="100" value="100" title="Filter">
-                <input type="range" id="FxDelay" min="0" max="100" value="0" title="Delay">
-                <input type="range" id="FxReverb" min="0" max="100" value="0" title="Reverb">
+                <label title="Lowpass filter">Cut <input type="range" id="FxFilter" min="0" max="100" value="100"></label>
+                <label title="Delay mix">Dly <input type="range" id="FxDelay" min="0" max="100" value="0"></label>
+                <label title="Reverb mix">Rvb <input type="range" id="FxReverb" min="0" max="100" value="0"></label>
+                <label title="Compressor">Cmp <input type="range" id="FxComp" min="0" max="100" value="40"></label>
+                <label title="Master level">Lvl <input type="range" id="FxMaster" min="0" max="100" value="85"></label>
             </div>
             <div class="WaveformWrap">
                 <canvas id="WaveformCanvas"></canvas>
@@ -108,7 +110,7 @@
                 <span>Channel Rack</span>
                 <div class="HeaderActions">
                     <button class="IconBtn" id="AddChannelBtn" title="Add channel">+</button>
-                    <button class="IconBtn" id="ToggleLeftDock" title="Collapse">–</button>
+                    <button class="IconBtn" id="ToggleLeftDock" title="Collapse">-</button>
                 </div>
             </div>
             <div class="ChannelList" id="ChannelList"></div>
@@ -130,7 +132,7 @@
                 <span>Browser</span>
                 <div class="HeaderActions">
                     <button class="IconBtn" id="RefreshBrowserBtn" title="Refresh">R</button>
-                    <button class="IconBtn" id="ToggleRightDock" title="Collapse">–</button>
+                    <button class="IconBtn" id="ToggleRightDock" title="Collapse">-</button>
                 </div>
             </div>
 
@@ -157,9 +159,9 @@
     <div class="PianoDock" id="PianoDock">
         <div class="DockResizeHorizontal" id="PianoResize" title="Drag to resize piano"></div>
         <div class="PianoToolbar">
-            <button type="button" class="IconBtn" id="TogglePianoDock" title="Minimize piano">–</button>
+            <button type="button" class="IconBtn" id="TogglePianoDock" title="Minimize piano">-</button>
             <span class="PianoTitle">Piano</span>
-            <span class="PianoHint">Z/X octave · A–K keys · Select a channel first</span>
+            <span class="PianoHint">Z/X octave · A-K keys · Select a channel first</span>
             <div class="PianoSpacer"></div>
             <label title="Octave">Oct <input type="number" id="PianoOctave" min="0" max="8" value="4"></label>
             <label title="Velocity">Vel <input type="range" id="PianoVel" min="1" max="100" value="80"></label>

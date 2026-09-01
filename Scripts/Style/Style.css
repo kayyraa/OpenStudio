@@ -1300,7 +1300,7 @@ button { font-family: inherit; font-size: inherit; }
 .ChannelRow { cursor: grab; }
 .ChannelRow:active { cursor: grabbing; }
 
-/* Modern DAW sliders ╬ô├ç├╢ thumb enlarges only while dragging */
+/* Modern DAW sliders - thumb enlarges only while dragging */
 input[type="range"] {
     -webkit-appearance: none;
     appearance: none;
@@ -1337,7 +1337,7 @@ input[type="range"]::-webkit-slider-thumb {
 
 input[type="range"]:hover::-webkit-slider-thumb {
     background: var(--AccentHover, #ff8533);
-    /* no scale on hover ╬ô├ç├╢ only while actively dragging */
+    /* no scale on hover - only while actively dragging */
     transform: scale(1);
 }
 
@@ -1840,7 +1840,7 @@ html, body {
 }
 
 
-/* Topbar flat controls ╬ô├ç├╢ no radius, less cramped */
+/* Topbar flat controls - no radius, less cramped */
 .Topbar,
 .Topbar * {
     border-radius: 0 !important;
@@ -2131,4 +2131,149 @@ html, body {
     margin: 0;
     color: var(--Text);
     line-height: 1.45;
+}
+
+/* Channel volume */
+.ChannelVolRow {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    width: 100%;
+    min-width: 0;
+}
+.ChannelVolLabel {
+    font-size: 9px;
+    color: var(--TextDim);
+    flex-shrink: 0;
+}
+.ChannelVol {
+    flex: 1;
+    min-width: 40px;
+    width: 100% !important;
+    height: 14px;
+}
+.SaveSampleBtn {
+    background: #1a1a1a;
+    border: 1px solid #333;
+    color: var(--TextDim);
+    width: 22px;
+    height: 20px;
+    border-radius: 2px;
+    cursor: pointer;
+    font-size: 9px;
+    padding: 0;
+    line-height: 1;
+    flex-shrink: 0;
+}
+.SaveSampleBtn:hover {
+    color: var(--Accent);
+    border-color: var(--Accent);
+}
+.DeleteSampleBtn {
+    color: var(--Danger) !important;
+}
+
+/* Collapsed docks - icon rail, not squished content */
+.Dock.Collapsed {
+    min-width: 36px !important;
+    max-width: 36px !important;
+    width: 36px !important;
+    overflow: hidden;
+}
+.Dock.Collapsed .ChannelList,
+.Dock.Collapsed .BrowserToolbar,
+.Dock.Collapsed .SampleList,
+.Dock.Collapsed .ProjectList,
+.Dock.Collapsed .UploadStatus,
+.Dock.Collapsed .BrowserTabs,
+.Dock.Collapsed .PanelHeader span,
+.Dock.Collapsed .StepGrid,
+.Dock.Collapsed .ChannelMain,
+.Dock.Collapsed .ChannelVolRow,
+.Dock.Collapsed .StretchBtn,
+.Dock.Collapsed .MuteBtn,
+.Dock.Collapsed .SaveSampleBtn,
+.Dock.Collapsed .RemoveChannelBtn,
+.Dock.Collapsed .ChannelColor,
+.Dock.Collapsed .ChannelName,
+.Dock.Collapsed .ChannelInfo {
+    display: none !important;
+}
+.Dock.Collapsed .PanelHeader {
+    padding: 0;
+    justify-content: center;
+    flex-direction: column;
+    height: 100%;
+    writing-mode: vertical-rl;
+    text-orientation: mixed;
+}
+.Dock.Collapsed .HeaderActions {
+    writing-mode: horizontal-tb;
+    flex-direction: column;
+    gap: 6px;
+    padding: 8px 0;
+}
+.Dock.Collapsed .DockResize {
+    display: none;
+}
+.PianoDock.Collapsed {
+    height: 32px !important;
+    min-height: 32px !important;
+    max-height: 32px !important;
+    overflow: hidden;
+}
+.PianoDock.Collapsed .PianoKeys,
+.PianoDock.Collapsed .PianoToolbar label,
+.PianoDock.Collapsed .PianoToolbar select,
+.PianoDock.Collapsed .PianoHint,
+.PianoDock.Collapsed .GhostBtn,
+.PianoDock.Collapsed .PianoSpacer,
+.PianoDock.Collapsed .DockResizeHorizontal {
+    display: none !important;
+}
+.PianoDock.Collapsed .PianoToolbar {
+    height: 32px;
+    border-bottom: none;
+}
+
+/* Modal actions alignment */
+.ModalActions {
+    display: flex;
+    gap: 8px;
+    margin-top: 14px;
+    justify-content: flex-end;
+    align-items: center;
+    width: 100%;
+}
+.ModalActions .Button {
+    height: 32px;
+    min-width: 96px;
+    padding: 0 16px;
+    flex: 0 0 auto;
+}
+.ModalBody .Button.Primary {
+    width: 100%;
+    margin-top: 12px;
+}
+.Modal .ModalBody {
+    align-items: stretch;
+}
+
+/* Fx group labels */
+.FxGroup {
+    gap: 8px;
+    padding: 0 8px;
+    min-width: 16em;
+    flex-wrap: nowrap;
+}
+.FxGroup label {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    font-size: 10px;
+    color: var(--TextDim);
+    white-space: nowrap;
+}
+.FxGroup input[type="range"] {
+    width: 42px;
 }

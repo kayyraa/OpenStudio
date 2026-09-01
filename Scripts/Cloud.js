@@ -323,14 +323,26 @@ globalThis.ListSamples = async () => {
 };
 
 
-globalThis.UploadSample = async (File, Meta = {}) => {
+globalThis.UploadSample = async (FileOrBlob, Meta = {}) => {
     const Author = Meta.Author || "anonymous";
     const Genre = Meta.Genre || "Uncategorized";
-    const Name = Meta.Name || File.name.replace(/\.[^.]+$/, "");
-    const SafeName = File.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+    const DefaultName = (FileOrBlob && FileOrBlob.name) ? FileOrBlob.name.replace(/\.[^.]+$/, "") : "Mic Take";
+    const Name = Meta.Name || DefaultName;
+    const ExtFromMime = (Mime) => {
+        if (!Mime) return "webm";
+        if (Mime.indexOf("wav") >= 0) return "wav";
+        if (Mime.indexOf("ogg") >= 0) return "ogg";
+        if (Mime.indexOf("mp4") >= 0 || Mime.indexOf("m4a") >= 0) return "m4a";
+        if (Mime.indexOf("mpeg") >= 0 || Mime.indexOf("mp3") >= 0) return "mp3";
+        return "webm";
+    };
+    const Mime = Meta.Mime || FileOrBlob.type || "audio/webm";
+    const Ext = Meta.Ext || ExtFromMime(Mime);
+    const RawFileName = (FileOrBlob && FileOrBlob.name) ? FileOrBlob.name : (Name + "." + Ext);
+    const SafeName = String(RawFileName).replace(/[^a-zA-Z0-9._-]/g, "_");
     const Path = `OpenStudio/${Guid().slice(0, 8)}-${SafeName}`;
 
-    const Buffer = await File.arrayBuffer();
+    const Buffer = await FileOrBlob.arrayBuffer();
     const Bytes = new Uint8Array(Buffer);
     let Binary = "";
 
@@ -381,6 +393,17 @@ globalThis.UploadSample = async (File, Meta = {}) => {
     };
 };
 
+
+globalThis.DeleteSample = async (Id, Author) => {
+    if (!Id) throw new TypeError("DeleteSample: Id is required");
+    const Doc = await SamplesDb.GetDocumentById(Id, true);
+    const Data = DocData(Doc);
+    if (!Data) throw new Error("Sample not found");
+    if (Author && String(Data.Author || "") !== String(Author)) {
+        throw new Error("Only the author can delete this sample");
+    }
+    return await SamplesDb.DeleteDocument(Id);
+};
 
 globalThis.SaveProject = async (Project, Options = {}) => {
     if (!Project || typeof Project !== "object") {
