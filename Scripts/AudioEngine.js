@@ -28,6 +28,9 @@ globalThis.AudioEngine = class {
         this.MicRecorder = null;
         this.MicChunks = [];
         this.MicRecording = false;
+        this.MetronomeEnabled = false;
+        this.MetronomeVolume = 0.7;
+        this.PreRollEnabled = false;
     }
 
     EnsureCtx() {
@@ -78,6 +81,62 @@ globalThis.AudioEngine = class {
         }
 
         return this.Ctx;
+    }
+
+    PlayMetronomeTick(IsAccent, Time) {
+        this.EnsureCtx();
+        var Osc = this.Ctx.createOscillator();
+        var Gain = this.Ctx.createGain();
+        Osc.type = "sine";
+        Osc.frequency.value = IsAccent ? 1200 : 800;
+        var Vol = this.MetronomeVolume != null ? this.MetronomeVolume : 0.7;
+        var GainValue = IsAccent ? Vol : Vol * 0.6;
+        var Start = Time || this.Ctx.currentTime;
+        Gain.gain.setValueAtTime(GainValue, Start);
+        Gain.gain.exponentialRampToValueAtTime(0.0001, Start + 0.05);
+        Osc.connect(Gain);
+        Gain.connect(this.Master || this.Ctx.destination);
+        Osc.start(Start);
+        Osc.stop(Start + 0.05);
+    }
+
+    ScheduleMetronome(SongTimeSeconds, TotalBeats) {
+        if (!this.MetronomeEnabled || !this.Ctx) return;
+        var Now = this.Ctx.currentTime;
+        var BeatsCount = TotalBeats || 128;
+        var Beat;
+        var StartSec;
+        var OffsetInSong;
+        var When;
+        var IsAccent;
+
+        for (Beat = 0; Beat < BeatsCount; Beat++) {
+            StartSec = this.BeatsToSeconds(Beat);
+            OffsetInSong = StartSec - SongTimeSeconds;
+            if (OffsetInSong < -0.05) continue;
+            When = Now + OffsetInSong;
+            if (When >= Now) {
+                IsAccent = (Beat % 4 === 0);
+                this.PlayMetronomeTick(IsAccent, When);
+            }
+        }
+    }
+
+    PlayPreRoll(Callback) {
+        this.EnsureCtx();
+        var BeatSec = 60 / this.Bpm;
+        var Now = this.Ctx.currentTime;
+        var Beat;
+        var Time;
+
+        for (Beat = 0; Beat < 4; Beat++) {
+            Time = Now + Beat * BeatSec;
+            this.PlayMetronomeTick(Beat === 0, Time);
+        }
+
+        setTimeout(function () {
+            if (Callback) Callback();
+        }, BeatSec * 4 * 1000);
     }
 
     GetAnalyserData() {

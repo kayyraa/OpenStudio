@@ -101,6 +101,48 @@ function HideModal(Id) {
     document.querySelector("#" + Id).style.display = "none";
 }
 
+var ConfirmCallback = null;
+
+function ShowConfirmModal(Message, OnConfirm) {
+    var MsgEl = document.querySelector("#ConfirmMessage");
+    if (MsgEl) MsgEl.textContent = Message || "Are you sure?";
+    ConfirmCallback = OnConfirm || null;
+    ShowModal("ConfirmModal");
+}
+
+function BindConfirmModal() {
+    var OkBtn = document.querySelector("#ConfirmOk");
+    var CancelBtn = document.querySelector("#ConfirmCancel");
+    var Overlay = document.querySelector("#ConfirmModal");
+
+    if (OkBtn) {
+        OkBtn.addEventListener("click", function () {
+            HideModal("ConfirmModal");
+            if (ConfirmCallback) {
+                var Fn = ConfirmCallback;
+                ConfirmCallback = null;
+                Fn();
+            }
+        });
+    }
+
+    if (CancelBtn) {
+        CancelBtn.addEventListener("click", function () {
+            ConfirmCallback = null;
+            HideModal("ConfirmModal");
+        });
+    }
+
+    if (Overlay) {
+        Overlay.addEventListener("mousedown", function (Event) {
+            if (Event.target === Overlay) {
+                ConfirmCallback = null;
+                HideModal("ConfirmModal");
+            }
+        });
+    }
+}
+
 function BindAuthUi() {
     var CloseButtons = QueryAll(".CloseModal");
     var Index;
@@ -349,17 +391,29 @@ function StartPlaybackFromPlayhead() {
     Engine.EnsureCtx();
     Engine.SetBpm(Number(TempoInput.value) || 120);
 
-    State.Simulation.Playing = true;
-    UpdatePlayIcon();
+    function DoStart() {
+        State.Simulation.Playing = true;
+        UpdatePlayIcon();
+        return PreloadTransportAssets().then(function () {
+            if (!State.Simulation.Playing) return;
+            var SongTime = State.Simulation.Time;
+            Engine.ScheduleClips(CollectClips(), SongTime);
+            Engine.ScheduleSteps(CollectSteps(), SongTime);
+            ScheduleRecordedNotes(SongTime);
+            Engine.ScheduleMetronome(SongTime, State.TotalBeats);
+            DrawAll();
+        });
+    }
 
-    return PreloadTransportAssets().then(function () {
-        if (!State.Simulation.Playing) return;
-        var SongTime = State.Simulation.Time;
-        Engine.ScheduleClips(CollectClips(), SongTime);
-        Engine.ScheduleSteps(CollectSteps(), SongTime);
-        ScheduleRecordedNotes(SongTime);
-        DrawAll();
-    });
+    if (Engine.PreRollEnabled && !State.Simulation.Playing) {
+        return new Promise(function (Resolve) {
+            Engine.PlayPreRoll(function () {
+                DoStart().then(Resolve);
+            });
+        });
+    }
+
+    return DoStart();
 }
 
 function TogglePlay() {
@@ -626,6 +680,7 @@ function RescheduleTransport() {
     Engine.ScheduleClips(CollectClips(), SongTime);
     Engine.ScheduleSteps(CollectSteps(), SongTime);
     ScheduleRecordedNotes(SongTime);
+    Engine.ScheduleMetronome(SongTime, State.TotalBeats);
 }
 
 function BindTransport() {
@@ -1368,7 +1423,7 @@ function BindTimelineEvents() {
             RenderChannels();
             UpdateWaveformSource();
         } else {
-            // Seek / scrub — do not create clips on single click
+            // Seek / scrub ╬ô├ç├╢ do not create clips on single click
             StartTimelineScrub(Event);
         }
     });
@@ -1776,7 +1831,7 @@ function NoteInputOn(Note, Source, Options) {
         State.KeyHolds[Note] = true;
     }
 
-    // Already sounding from either source — do not re-trigger
+    // Already sounding from either source ╬ô├ç├╢ do not re-trigger
     if (State.ActiveVoices[Note] && !Options.Force) {
         return;
     }
@@ -1878,7 +1933,7 @@ function NoteInputOff(Note, Source) {
         delete State.KeyHolds[Note];
     }
 
-    // Still held by the other input source — keep sounding
+    // Still held by the other input source ╬ô├ç├╢ keep sounding
     if (IsNoteHeld(Note)) return;
 
     var Armed = State.RecordArm[Note];
@@ -2313,6 +2368,57 @@ function SerializeProject() {
     };
 }
 
+function UpdatePublishLabel() {
+    var Btn = document.querySelector("#PublishBtn");
+    if (!Btn) return;
+    var IsOwn = false;
+    if (State.ProjectId && State.User) {
+        var Username = State.User.Username || State.User.DisplayName || "";
+        var Index;
+        for (Index = 0; Index < (State.Projects || []).length; Index++) {
+            var P = State.Projects[Index];
+            if (P && P.Id === State.ProjectId && String(P.Author) === String(Username)) {
+                IsOwn = true;
+                break;
+            }
+        }
+        if (!IsOwn && State.ProjectId) IsOwn = true;
+    }
+    if (State.ProjectId && IsOwn) {
+        Btn.textContent = "Save";
+        Btn.title = "Save project to cloud";
+    } else {
+        Btn.textContent = "Publish";
+        Btn.title = "Publish project to cloud";
+    }
+}
+
+function NewEmptyProject() {
+    if (State.Simulation.Playing) StopTransport();
+    State.ProjectId = null;
+    State.Channels = [];
+    State.SelectedChannelId = null;
+    State.SelectedNote = null;
+    State.Simulation.Time = 0;
+    Engine.Stop();
+    var NameEl = document.querySelector("#ProjectName");
+    if (NameEl) NameEl.value = "Untitled Project";
+    if (TempoInput) {
+        TempoInput.value = 120;
+        Engine.SetBpm(120);
+    }
+    UpdatePlayIcon();
+    RenderChannels();
+    ResizeCanvases();
+    DrawAll();
+    UpdatePublishLabel();
+    var Status = document.querySelector("#PublishStatus");
+    if (Status) Status.textContent = "New project";
+    setTimeout(function () {
+        if (Status) Status.textContent = "";
+    }, 1500);
+}
+
 function PublishProject() {
     if (!State.User) {
         alert("Sign in to save a project.");
@@ -2327,13 +2433,13 @@ function PublishProject() {
     var Status = document.querySelector("#PublishStatus");
     if (Status) Status.textContent = "Saving...";
 
-    // Overwrite only when this project was loaded with an id and we are the author
     SaveProject(Payload, { CurrentUser: Username }).then(function (Result) {
         State.ProjectId = Result.Id;
         if (Status) Status.textContent = "Saved";
         setTimeout(function () {
             if (Status) Status.textContent = "";
         }, 2000);
+        UpdatePublishLabel();
         RefreshBrowser();
     }).catch(function (Error) {
         console.error(Error);
@@ -2415,6 +2521,7 @@ function ApplyLoadedProject(Doc) {
     RenderChannels();
     DrawAll();
     UpdateWaveformSource();
+    UpdatePublishLabel();
 }
 
 function OpenProjectFromBrowser(Doc) {
@@ -2426,6 +2533,7 @@ function OpenProjectFromBrowser(Doc) {
         Status.textContent = "Opened: " + (Doc.Name || "Project") + " by " + (Doc.Author || "?");
         Status.className = "UploadStatus Ok";
     }
+    UpdatePublishLabel();
 }
 
 function ToggleMicRecord() {
@@ -2566,7 +2674,7 @@ function OpenNoteGraphEditor(ChannelId, NoteIndex) {
     var Title = document.querySelector("#NoteGraphTitle");
     if (Title) {
         var Nn = Channel.Notes[NoteIndex];
-        Title.textContent = "Note · " + MidiNoteName(Nn.Note) + " @ " +
+        Title.textContent = "Note Γö¼Γòû " + MidiNoteName(Nn.Note) + " @ " +
             (Math.round((Nn.Beat || 0) * 100) / 100);
     }
 
@@ -2853,7 +2961,7 @@ function OpenPianoRoll(ChannelId) {
     State.PianoRoll.GraphDrag = null;
 
     var Title = document.querySelector("#PianoRollTitle");
-    if (Title) Title.textContent = "Piano Roll — " + Channel.Name;
+    if (Title) Title.textContent = "Piano Roll ╬ô├ç├╢ " + Channel.Name;
 
     var Modal = document.querySelector("#PianoRollModal");
     if (!Modal) {
@@ -3493,14 +3601,15 @@ function RenderProjectList() {
             '<span class="SampleName">' + EscapeHtml(Project.Name || "Untitled") + '</span>' +
             '<span class="SampleSub">' +
             EscapeHtml(Project.Author || "?") +
-            (IsMine ? " · yours" : "") +
-            " · " + ((Project.Channels && Project.Channels.length) || 0) + " ch" +
+            (IsMine ? " ┬╖ yours" : "") +
+            " ┬╖ " + ((Project.Channels && Project.Channels.length) || 0) + " ch" +
             '</span>' +
             '</div>' +
             '<div class="SampleActions">' +
             '<button type="button" class="IconBtn OpenProjectBtn" title="Open project">Open</button>' +
+            (IsMine ? '<button type="button" class="IconBtn DeleteProjectBtn" title="Delete project">x</button>' : "") +
             '</div>';
-        (function (Doc) {
+        (function (Doc, Mine) {
             var Btn = Item.querySelector(".OpenProjectBtn");
             if (Btn) {
                 Btn.addEventListener("click", function (Event) {
@@ -3509,10 +3618,34 @@ function RenderProjectList() {
                     OpenProjectFromBrowser(Doc);
                 });
             }
+            var Del = Item.querySelector(".DeleteProjectBtn");
+            if (Del && Mine) {
+                Del.addEventListener("click", function (Event) {
+                    Event.preventDefault();
+                    Event.stopPropagation();
+                    ShowConfirmModal(
+                        "Delete project \"" + (Doc.Name || "Untitled") + "\"? This cannot be undone.",
+                        function () {
+                            DeleteProject(Doc.Id).then(function () {
+                                if (State.ProjectId === Doc.Id) {
+                                    State.ProjectId = null;
+                                    UpdatePublishLabel();
+                                }
+                                RefreshBrowser();
+                            }).catch(function (Err) {
+                                var Status = document.querySelector("#PublishStatus");
+                                if (Status) {
+                                    Status.textContent = Err.message || "Delete failed";
+                                }
+                            });
+                        }
+                    )
+                });
+            }
             Item.addEventListener("dblclick", function () {
                 OpenProjectFromBrowser(Doc);
             });
-        })(Project);
+        })(Project, IsMine);
         ProjectListEl.appendChild(Item);
     }
 }
@@ -3988,6 +4121,114 @@ RegisterTooltipRenderer("meter", function (Ctx, W, H) {
 });
 
 
+function BindMetronomeUi() {
+    var MetroBtn = document.querySelector("#MetronomeBtn");
+    var VolEl = document.querySelector("#MetronomeVolume");
+    var CountBtn = document.querySelector("#CountInBtn");
+
+    function SyncMetroUi() {
+        if (MetroBtn) MetroBtn.classList.toggle("Active", !!Engine.MetronomeEnabled);
+        if (CountBtn) CountBtn.classList.toggle("Active", !!Engine.PreRollEnabled);
+    }
+
+    if (MetroBtn) {
+        MetroBtn.addEventListener("click", function () {
+            Engine.MetronomeEnabled = !Engine.MetronomeEnabled;
+            SyncMetroUi();
+            if (State.Simulation.Playing) RescheduleTransport();
+        });
+    }
+    if (VolEl) {
+        VolEl.addEventListener("input", function () {
+            Engine.MetronomeVolume = Math.max(0, Math.min(1, Number(VolEl.value) / 100));
+        });
+        Engine.MetronomeVolume = Math.max(0, Math.min(1, Number(VolEl.value) / 100));
+    }
+    if (CountBtn) {
+        CountBtn.addEventListener("click", function () {
+            Engine.PreRollEnabled = !Engine.PreRollEnabled;
+            SyncMetroUi();
+        });
+    }
+    SyncMetroUi();
+}
+
+function BindMenuBar() {
+    var Items = document.querySelectorAll(".MenuItem");
+    var Index;
+    for (Index = 0; Index < Items.length; Index++) {
+        (function (Item) {
+            Item.addEventListener("click", function (Event) {
+                Event.stopPropagation();
+                var WasOpen = Item.classList.contains("Open");
+                var All = document.querySelectorAll(".MenuItem.Open");
+                var J;
+                for (J = 0; J < All.length; J++) All[J].classList.remove("Open");
+                if (!WasOpen) Item.classList.add("Open");
+            });
+        })(Items[Index]);
+    }
+    document.addEventListener("click", function () {
+        var All = document.querySelectorAll(".MenuItem.Open");
+        var J;
+        for (J = 0; J < All.length; J++) All[J].classList.remove("Open");
+    });
+
+    function BindMenuClick(Id, Fn) {
+        var El = document.querySelector("#" + Id);
+        if (El) El.addEventListener("click", function (Event) {
+            Event.preventDefault();
+            Event.stopPropagation();
+            Fn();
+            var All = document.querySelectorAll(".MenuItem.Open");
+            var J;
+            for (J = 0; J < All.length; J++) All[J].classList.remove("Open");
+        });
+    }
+
+    BindMenuClick("MenuNewProject", NewEmptyProject);
+    BindMenuClick("MenuSaveProject", PublishProject);
+    BindMenuClick("MenuPublishProject", function () {
+        State.ProjectId = null;
+        UpdatePublishLabel();
+        PublishProject();
+    });
+    BindMenuClick("MenuRefreshBrowser", RefreshBrowser);
+    BindMenuClick("MenuClearNotes", function () {
+        var Ch = GetSelectedChannel();
+        if (Ch) {
+            Ch.Notes = [];
+            DrawTimeline();
+            if (State.PianoRoll && State.PianoRoll.Open) DrawPianoRoll();
+            if (State.Simulation.Playing) RescheduleTransport();
+        }
+    });
+    BindMenuClick("MenuStopTransport", StopTransport);
+    BindMenuClick("MenuToggleLeftDock", function () {
+        var Btn = document.querySelector("#ToggleLeftDock");
+        if (Btn) Btn.click();
+    });
+    BindMenuClick("MenuToggleRightDock", function () {
+        var Btn = document.querySelector("#ToggleRightDock");
+        if (Btn) Btn.click();
+    });
+    BindMenuClick("MenuTogglePiano", function () {
+        var Btn = document.querySelector("#TogglePianoDock");
+        if (Btn) Btn.click();
+    });
+    BindMenuClick("MenuToggleMetronome", function () {
+        var Btn = document.querySelector("#MetronomeBtn");
+        if (Btn) Btn.click();
+    });
+    BindMenuClick("MenuToggleCountIn", function () {
+        var Btn = document.querySelector("#CountInBtn");
+        if (Btn) Btn.click();
+    });
+
+    var NewBtn = document.querySelector("#NewProjectBtn");
+    if (NewBtn) NewBtn.addEventListener("click", NewEmptyProject);
+}
+
 function Init() {
     document.addEventListener("selectstart", function (Event) {
         var Tag = Event.target && Event.target.tagName;
@@ -3998,6 +4239,7 @@ function Init() {
 
     TooltipSystem.Bind();
     BindAuthUi();
+    BindConfirmModal();
     BindTransport();
     var Pub = document.querySelector("#PublishBtn");
     if (Pub) Pub.addEventListener("click", PublishProject);
@@ -4007,6 +4249,9 @@ function Init() {
     BindTimelineEvents();
     BindBrowser();
     BindDocks();
+    BindDockCollapse();
+    BindMetronomeUi();
+    BindMenuBar();
     BindKeyboard();
     BindOctaveWheel();
     BindEffects();
@@ -4022,6 +4267,7 @@ function Init() {
     ResizeCanvases();
     RefreshBrowser();
     SetBrowserTab(State.BrowserTab || "samples");
+    UpdatePublishLabel();
 
     window.addEventListener("resize", function () {
         ResizeCanvases();

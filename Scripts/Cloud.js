@@ -140,7 +140,6 @@ globalThis.Firestore = class {
         }
 
         const DocId = Id ?? Guid();
-        // Flat document only — do not nest a duplicate "Table" copy
         const Payload = { ...Object };
 
         const Result = await this.WithRetry(
@@ -263,8 +262,6 @@ globalThis.DocData = (Doc) => {
 
     const Data = Doc.data() || {};
 
-    // Legacy docs may include a nested Table clone; prefer top-level fields
-    // and never expose Table on the app-facing object.
     const Nested = Data.Table && typeof Data.Table === "object" ? Data.Table : {};
     const Merged = { ...Nested, ...Data };
     delete Merged.Table;
@@ -392,7 +389,6 @@ globalThis.SaveProject = async (Project, Options = {}) => {
 
     const CurrentUser = Options.CurrentUser || Project.Author || "anonymous";
 
-    // Channels already contain Notes arrays — do not store a top-level Notes: null
     const Payload = {
         Author: Project.Author || CurrentUser,
         Name: Project.Name || "Untitled Project",
@@ -409,7 +405,6 @@ globalThis.SaveProject = async (Project, Options = {}) => {
         if (String(Existing.Author || "") !== String(CurrentUser)) {
             throw new Error("Only the author can overwrite this project. Use Save As (clear id) or open your own project.");
         }
-        // Keep original author
         Payload.Author = Existing.Author;
         await ProjectsDb.UpdateDocument(Project.Id, Payload);
         return { Id: Project.Id, ...Payload };
@@ -417,6 +412,10 @@ globalThis.SaveProject = async (Project, Options = {}) => {
 
     const { Id } = await ProjectsDb.NewDocument(Payload);
     return { Id, ...Payload };
+};
+
+globalThis.DeleteProject = async (Id) => {
+    return await ProjectsDb.DeleteDocument(Id);
 };
 
 globalThis.ListProjects = async (Author) => {
