@@ -2763,3 +2763,633 @@ input[type="number"] {
 .PianoDock.Collapsed .PianoDropdown {
     display: none !important;
 }
+
+
+/* Sequencer / channel row must show step grid */
+.ChannelRow {
+    height: auto !important;
+    min-height: var(--TrackH, 64px) !important;
+    max-height: none !important;
+}
+.ChannelMain {
+    gap: 3px !important;
+}
+.StepGrid {
+    display: grid !important;
+    grid-template-columns: repeat(16, 1fr) !important;
+    gap: 2px !important;
+    width: 100% !important;
+    min-height: 14px !important;
+    pointer-events: auto !important;
+}
+.StepCell {
+    pointer-events: auto !important;
+    min-height: 12px !important;
+}
+
+
+.ContextMenu, .AppContextMenu {
+    position: fixed;
+    z-index: 20000;
+    min-width: 180px;
+    max-width: 280px;
+    display: none;
+    flex-direction: column;
+    background: #1c1c1f;
+    border: 1px solid #3a3a42;
+    box-shadow: 0 12px 32px rgba(0,0,0,0.55);
+    padding: 4px 0;
+}
+.CtxItem {
+    background: transparent;
+    border: none;
+    color: var(--Text, #eee);
+    text-align: left;
+    padding: 8px 14px;
+    cursor: pointer;
+    font-size: 12px;
+    width: 100%;
+}
+.CtxItem:hover:not(:disabled) {
+    background: #2a2218;
+    color: var(--Accent, #ff6a00);
+}
+.CtxItem.Danger { color: #e88; }
+.CtxItem.Danger:hover:not(:disabled) { background: #2a1515; color: #f99; }
+.CtxItem.Checked { color: var(--Accent, #ff6a00); }
+.CtxSep { height: 1px; background: #2a2a30; margin: 4px 0; }
+.ChannelRow.Muted .ChannelName { opacity: 0.55; font-style: italic; }
+.ChannelFxRows { display: flex; flex-direction: column; gap: 10px; }
+.ChannelFxRows label { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.ChannelFxRows input[type="range"] { width: 140px; }
+.ChannelFxHint { color: var(--TextDim, #888); font-size: 11px; margin: 0 0 10px; }
+
+
+/* Context menu hard styles */
+#AppContextMenu.ContextMenu,
+.ContextMenu#AppContextMenu {
+    position: fixed !important;
+    z-index: 30000 !important;
+    min-width: 190px;
+    display: none;
+    flex-direction: column;
+    background: #1c1c1f !important;
+    border: 1px solid #3a3a42 !important;
+    box-shadow: 0 12px 32px rgba(0,0,0,0.6) !important;
+    padding: 4px 0;
+    pointer-events: auto !important;
+}
+#AppContextMenu.Open {
+    display: flex !important;
+}
+.CtxColorRow {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    padding: 6px 10px;
+}
+.CtxColorSwatch {
+    width: 16px;
+    height: 16px;
+    border: 1px solid #000;
+    cursor: pointer;
+    padding: 0;
+}
+.CtxColorSwatch:hover {
+    outline: 1px solid #fff;
+}
+
+/* Mixer */
+.MixerModalBox {
+    width: min(960px, 96vw) !important;
+    max-width: 96vw !important;
+}
+.MixerBody {
+    overflow-x: auto !important;
+    max-height: 70vh;
+}
+.MixerStrips {
+    display: flex;
+    gap: 8px;
+    align-items: flex-end;
+    padding: 8px 4px 12px;
+    min-height: 320px;
+}
+.MixerStrip {
+    width: 88px;
+    flex: 0 0 88px;
+    background: #161618;
+    border: 1px solid #2a2a30;
+    padding: 6px 4px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+}
+.MixerStrip.Selected {
+    border-color: var(--Accent, #ff6a00);
+}
+.MixerStrip.Muted {
+    opacity: 0.55;
+}
+.MixerColor {
+    width: 100%;
+    height: 4px;
+}
+.MixerName {
+    font-size: 10px;
+    color: #ccc;
+    width: 100%;
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.MixerKnob {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    font-size: 9px;
+    color: #888;
+    width: 100%;
+}
+.MixerKnob input[type="range"] {
+    width: 100%;
+    height: 14px;
+}
+.MixerFader {
+    writing-mode: bt-lr;
+    -webkit-appearance: slider-vertical;
+    appearance: slider-vertical;
+    width: 18px !important;
+    height: 120px !important;
+    padding: 0;
+}
+.MixerFaderVal {
+    font-size: 10px;
+    color: #aaa;
+}
+.MixerStripActions {
+    display: flex;
+    gap: 4px;
+}
+.MixerMute, .MixerFxBtn {
+    background: #222;
+    border: 1px solid #444;
+    color: #ccc;
+    font-size: 10px;
+    padding: 2px 6px;
+    cursor: pointer;
+}
+.MixerMute.Active {
+    background: var(--Accent, #ff6a00);
+    color: #111;
+    border-color: var(--Accent, #ff6a00);
+}
+
+
+/* Mic icon fixed size */
+.MicButton img,
+.MicButton.IconImageBtn img,
+img.MicIcon {
+    width: 32px !important;
+    height: 32px !important;
+    max-width: 32px !important;
+    max-height: 32px !important;
+    object-fit: contain !important;
+}
+
+/* Smoother playlist scrolling */
+#PlaylistBody {
+    scroll-behavior: auto;
+    overscroll-behavior: contain;
+}
+
+
+.WaveformWrap {
+    width: 6em !important;
+    min-width: 6em !important;
+    max-width: 6em !important;
+    flex: 0 0 6em !important;
+}
+#WaveformCanvas {
+    width: 100% !important;
+    height: 100% !important;
+}
+
+.AnalyzerCanvas {
+    width: 100%;
+    height: 180px;
+    background: #0c0c0e;
+    border: 1px solid #2a2a30;
+}
+.AnalyzerModalBox {
+    width: min(520px, 94vw) !important;
+}
+.SettingsCheck {
+    display: flex !important;
+    align-items: center;
+    gap: 8px;
+    justify-content: flex-start !important;
+}
+
+/* Themes */
+body[data-theme="midnight"],
+html[data-theme="midnight"] body {
+    --Bg: #07070c;
+    --BgRaised: #101018;
+    --Border: #252536;
+    --Text: #e8e8f2;
+    --TextDim: #8b8ba3;
+    --Accent: #6ea8ff;
+}
+body[data-theme="graphite"],
+html[data-theme="graphite"] body {
+    --Bg: #121212;
+    --BgRaised: #1a1a1a;
+    --Border: #2e2e2e;
+    --Text: #ededed;
+    --TextDim: #9a9a9a;
+    --Accent: #c0c0c0;
+}
+body[data-theme="ember"],
+html[data-theme="ember"] body {
+    --Bg: #140c0a;
+    --BgRaised: #1c1210;
+    --Border: #3a2218;
+    --Text: #f3e8e0;
+    --TextDim: #b08a78;
+    --Accent: #ff6a00;
+}
+
+#TimingMetronomeToggle.Active,
+#TimingCountInToggle.Active {
+    background: var(--Accent, #ff6a00);
+    color: #111;
+    border-color: var(--Accent, #ff6a00);
+}
+
+
+/* ===== Floating dock widgets (Roblox Studio style) ===== */
+.FloatingLayer {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 3500;
+}
+.FloatingWidget {
+    position: absolute;
+    pointer-events: auto;
+    display: flex;
+    flex-direction: column;
+    background: #16161a;
+    border: 1px solid #3a3a45;
+    box-shadow: 0 18px 48px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,255,255,0.04);
+    min-width: 240px;
+    min-height: 160px;
+    opacity: 0;
+    transform: translateY(10px) scale(0.96);
+    transition: opacity 0.18s cubic-bezier(0.22,1,0.36,1),
+                transform 0.18s cubic-bezier(0.22,1,0.36,1),
+                box-shadow 0.2s ease;
+}
+.FloatingWidget.Open {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+}
+.FloatingWidget.Closing {
+    opacity: 0;
+    transform: translateY(8px) scale(0.97);
+}
+.FloatingWidget.Dragging {
+    box-shadow: 0 24px 64px rgba(0,0,0,0.65), 0 0 0 1px var(--Accent, #ff6a00);
+    transition: none;
+    opacity: 0.96;
+}
+.FloatingWidget.Resizing {
+    transition: none;
+}
+.FwTitleBar {
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 8px 0 10px;
+    background: linear-gradient(180deg, #222228, #1a1a1f);
+    border-bottom: 1px solid #2e2e36;
+    cursor: grab;
+    user-select: none;
+    flex-shrink: 0;
+}
+.FloatingWidget.Dragging .FwTitleBar {
+    cursor: grabbing;
+}
+.FwTitle {
+    font-size: 12px;
+    color: var(--Text, #eee);
+    font-weight: 600;
+    letter-spacing: 0.02em;
+}
+.FwClose {
+    width: 22px;
+    height: 22px;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    border-radius: 3px;
+    transition: background 0.15s ease;
+}
+.FwClose:hover {
+    background: rgba(255,60,60,0.25);
+}
+.FwClose img {
+    width: 12px;
+    height: 12px;
+}
+.FwBody {
+    flex: 1;
+    min-height: 0;
+    overflow: auto;
+    padding: 10px;
+    position: relative;
+}
+.FwResize {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    width: 14px;
+    height: 14px;
+    cursor: nwse-resize;
+    background: linear-gradient(135deg, transparent 50%, #555 50%);
+    opacity: 0.7;
+}
+.FwResize:hover {
+    opacity: 1;
+    background: linear-gradient(135deg, transparent 50%, var(--Accent, #ff6a00) 50%);
+}
+.FwFillCanvas {
+    width: 100% !important;
+    height: 100% !important;
+    min-height: 140px;
+    display: block;
+    background: #0c0c0e;
+}
+.FwPluginRows {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+.FwPluginRows label {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    font-size: 12px;
+    color: var(--Text, #ddd);
+}
+.FwPluginRows input[type="range"] {
+    width: 140px;
+}
+.FwPluginRows .Button.Active {
+    background: var(--Accent, #ff6a00);
+    color: #111;
+    border-color: var(--Accent, #ff6a00);
+}
+.FwMixerStrips {
+    display: flex;
+    gap: 8px;
+    align-items: flex-end;
+    min-height: 280px;
+    overflow-x: auto;
+    padding-bottom: 8px;
+}
+
+/* ===== Studio motion / transitions ===== */
+.Button,
+.GhostBtn,
+.IconBtn,
+.MenuLabel,
+.BrowserTab,
+.StepCell,
+.ChannelRow,
+.SampleItem,
+.CtxItem,
+.MetroBtn,
+.CountInBtn {
+    transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease,
+                transform 0.12s ease, box-shadow 0.15s ease, opacity 0.15s ease;
+}
+.Button:hover,
+.GhostBtn:hover {
+    transform: translateY(-1px);
+}
+.Button:active,
+.GhostBtn:active,
+.StepCell:active {
+    transform: translateY(1px) scale(0.98);
+}
+.StepCell {
+    transition: background 0.12s ease, transform 0.1s ease, box-shadow 0.12s ease;
+}
+.StepCell.On {
+    box-shadow: 0 0 0 1px var(--Accent, #ff6a00), 0 0 8px rgba(255,106,0,0.35);
+}
+.ChannelRow {
+    transition: background 0.15s ease, border-color 0.15s ease, opacity 0.15s ease;
+}
+.ChannelRow.Selected {
+    box-shadow: inset 2px 0 0 var(--Accent, #ff6a00);
+}
+.MenuDropdown {
+    animation: MenuIn 0.14s cubic-bezier(0.22,1,0.36,1);
+    transform-origin: top left;
+}
+@keyframes MenuIn {
+    from { opacity: 0; transform: translateY(-4px) scaleY(0.96); }
+    to { opacity: 1; transform: translateY(0) scaleY(1); }
+}
+.ModalOverlay {
+    animation: OverlayIn 0.16s ease;
+    transition: opacity 0.16s ease;
+}
+@keyframes OverlayIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+.ModalOverlay .Modal {
+    animation: ModalIn 0.18s cubic-bezier(0.22,1,0.36,1);
+}
+@keyframes ModalIn {
+    from { opacity: 0; transform: translateY(8px) scale(0.96); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+}
+.Dock {
+    transition: width 0.2s cubic-bezier(0.22,1,0.36,1), min-width 0.2s ease, max-width 0.2s ease;
+}
+.PianoDock {
+    transition: height 0.2s cubic-bezier(0.22,1,0.36,1);
+}
+.PianoKey {
+    transition: background 0.08s ease, transform 0.08s ease, box-shadow 0.08s ease;
+}
+.PlayButton,
+.StopButton {
+    transition: transform 0.12s ease, filter 0.15s ease, opacity 0.15s ease;
+}
+.PlayButton:hover,
+.StopButton:hover {
+    transform: scale(1.08);
+    filter: brightness(1.15);
+}
+.PlayButton:active,
+.StopButton:active {
+    transform: scale(0.95);
+}
+.Topbar .Button {
+    transition: background 0.15s ease, transform 0.12s ease;
+}
+#PlaylistBody {
+    scroll-behavior: auto !important;
+}
+.TempoBubble {
+    transition: transform 0.1s ease, background 0.1s ease, box-shadow 0.1s ease;
+}
+.TempoBubble.Flash {
+    transform: scale(1.25);
+    box-shadow: 0 0 10px rgba(255,106,0,0.55);
+}
+.AppContextMenu {
+    animation: MenuIn 0.12s cubic-bezier(0.22,1,0.36,1);
+}
+
+
+/* Topbar: no border-bottom on items — keep uniform border width via border-right only */
+.TopbarLeft > *,
+.TopbarRight > *,
+.Topbar .Button,
+.Topbar .Controls,
+.Topbar .TempoGroup,
+.Topbar .PlaybackVolGroup,
+.Topbar .TimeGroup,
+.Topbar .WaveformWrap,
+.Topbar .InputWrapper,
+.Topbar .ProjectNameWrap,
+.Topbar .UserChip,
+.Topbar .SignInButton,
+.Topbar .Logo,
+.Topbar .NewProjectBtn,
+.Topbar .IconImageBtn {
+    border-bottom: none !important;
+}
+
+.TopbarLeft > *,
+.TopbarRight > * {
+    border-bottom: none !important;
+    box-shadow: none;
+}
+
+/* Extra fluid studio motion */
+html {
+    scroll-behavior: smooth;
+}
+body {
+    transition: background-color 0.35s ease, color 0.25s ease;
+}
+.Workspace,
+.Dock,
+.Playlist,
+.PianoDock,
+.Topbar,
+.MenuBar {
+    transition: background-color 0.3s ease, border-color 0.25s ease, width 0.22s cubic-bezier(0.22,1,0.36,1), height 0.22s cubic-bezier(0.22,1,0.36,1);
+}
+.ChannelRow {
+    transition: background 0.18s ease, border-color 0.18s ease, opacity 0.18s ease, transform 0.15s ease, box-shadow 0.18s ease;
+}
+.ChannelRow:hover {
+    background: rgba(255,255,255,0.03);
+}
+.ChannelRow.Selected {
+    transition: background 0.18s ease, box-shadow 0.18s ease;
+}
+.SampleItem {
+    transition: background 0.15s ease, transform 0.12s ease, opacity 0.15s ease;
+}
+.SampleItem:hover {
+    transform: translateX(2px);
+}
+.FloatingWidget {
+    transition: opacity 0.2s cubic-bezier(0.22,1,0.36,1),
+                transform 0.22s cubic-bezier(0.22,1,0.36,1),
+                box-shadow 0.2s ease,
+                width 0.05s linear,
+                height 0.05s linear;
+}
+.FloatingWidget.Open {
+    animation: FwPop 0.22s cubic-bezier(0.22,1,0.36,1);
+}
+@keyframes FwPop {
+    0% { opacity: 0; transform: translateY(12px) scale(0.94); }
+    100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+.FwTitleBar {
+    transition: background 0.15s ease;
+}
+.FwTitleBar:hover {
+    background: linear-gradient(180deg, #2a2a32, #1e1e24);
+}
+.ModalOverlay {
+    backdrop-filter: blur(2px);
+    transition: opacity 0.2s ease, backdrop-filter 0.2s ease;
+}
+.ModalOverlay .Modal {
+    transition: transform 0.2s cubic-bezier(0.22,1,0.36,1), opacity 0.2s ease;
+}
+input[type="range"] {
+    transition: filter 0.15s ease;
+}
+input[type="range"]:hover {
+    filter: brightness(1.1);
+}
+input[type="range"]:active {
+    filter: brightness(1.15);
+}
+.StepCell {
+    transition: background 0.14s ease, transform 0.1s cubic-bezier(0.22,1,0.36,1), box-shadow 0.14s ease;
+}
+.StepCell:hover {
+    transform: scale(1.06);
+}
+.StepCell.On {
+    animation: StepOn 0.18s cubic-bezier(0.22,1,0.36,1);
+}
+@keyframes StepOn {
+    0% { transform: scale(0.85); }
+    70% { transform: scale(1.08); }
+    100% { transform: scale(1); }
+}
+.PianoKey {
+    transition: background 0.07s ease, transform 0.07s ease, box-shadow 0.1s ease, filter 0.1s ease;
+}
+.MenuDropdown button {
+    transition: background 0.12s ease, color 0.12s ease, padding-left 0.12s ease;
+}
+.MenuDropdown button:hover {
+    padding-left: 16px;
+}
+.BrowserTab {
+    transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+}
+.PublishStatus {
+    transition: opacity 0.25s ease, color 0.25s ease;
+}
+.DragGhost {
+    transition: opacity 0.12s ease, transform 0.12s ease;
+}
+.ChannelFxFloatRows .Button {
+    margin-top: 6px;
+}

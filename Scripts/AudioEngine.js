@@ -12,7 +12,7 @@ globalThis.AudioEngine = class {
         this.Analyser = null;
         this.Compressor = null;
         this.Limiter = null;
-        this.MaxVoices = 48;
+        this.MaxVoices = 256;
         this.Buffers = new Map();
         this.Loading = new Map();
         this.Sources = [];
@@ -37,6 +37,11 @@ globalThis.AudioEngine = class {
         this.MetroSources = [];
         this.PreRollEnabled = false;
         this.PreRollBeats = 4;
+        this.ScheduledStepKeys = new Set();
+        this.StepScheduleEpoch = 0;
+        this.MasterEqLow = null;
+        this.MasterEqMid = null;
+        this.MasterEqHigh = null;
     }
 
     EnsureCtx() {
@@ -183,6 +188,7 @@ globalThis.AudioEngine = class {
     ScheduleMetronome(SongTimeSeconds, TotalBeats) {
         this.EnsureMetronomeBus();
         this.ClearMetronomeSources();
+        if (this.PreRollActive) return;
         this.ApplyMetronomeGain();
         if (!this.MetronomeEnabled || !this.Ctx) return;
         var Now = this.Ctx.currentTime;
@@ -401,9 +407,184 @@ globalThis.AudioEngine = class {
         this.Sources = this.Sources.slice(Extra);
     }
 
-    ScheduleClips(Clips, SongTimeSeconds) {
+    ConnectWithChannelFx(Source, Gain, Fx) {
+        var Node = Source;
+        if (Fx) {
+            var LowG = Fx.EqLow != null ? Number(Fx.EqLow) : 0;
+            var MidG = Fx.EqMid != null ? Number(Fx.EqMid) : 0;
+            var HighG = Fx.EqHigh != null ? Number(Fx.EqHigh) : 0;
+            if (Math.abs(LowG) > 0.5 || Math.abs(MidG) > 0.5 || Math.abs(HighG) > 0.5) {
+                var Low = this.Ctx.createBiquadFilter();
+                Low.type = "lowshelf";
+                Low.frequency.value = 250;
+                Low.gain.value = Math.max(-24, Math.min(24, LowG));
+                var Mid = this.Ctx.createBiquadFilter();
+                Mid.type = "peaking";
+                Mid.frequency.value = 1000;
+                Mid.Q.value = 0.9;
+                Mid.gain.value = Math.max(-24, Math.min(24, MidG));
+                var High = this.Ctx.createBiquadFilter();
+                High.type = "highshelf";
+                High.frequency.value = 4000;
+                High.gain.value = Math.max(-24, Math.min(24, HighG));
+                Node.connect(Low);
+                Low.connect(Mid);
+                Mid.connect(High);
+                Node = High;
+            }
+            var FilterAmt = Fx.Filter != null ? Number(Fx.Filter) / 100 : 1;
+            if (FilterAmt < 0.999) {
+                var Biquad = this.Ctx.createBiquadFilter();
+                Biquad.type = "lowpass";
+                Biquad.frequency.value = 40 + Math.pow(Math.max(0, FilterAmt), 2) * 17960;
+                Biquad.Q.value = 0.7;
+                Node.connect(Biquad);
+                Node = Biquad;
+            }
+            var Drive = Fx.Drive != null ? Number(Fx.Drive) / 100 : 0;
+            if (Drive > 0.01) {
+                var Shaper = this.Ctx.createWaveShaper();
+                var Curve = new Float32Array(256);
+                var Amount = 1 + Drive * 12;
+                var I;
+                for (I = 0; I < 256; I++) {
+                    var X = (I * 2) / 255 - 1;
+                    Curve[I] = ((Math.PI + Amount) * X) / (Math.PI + Amount * Math.abs(X));
+                }
+                Shaper.curve = Curve;
+                Shaper.oversample = "2x";
+                Node.connect(Shaper);
+                Node = Shaper;
+            }
+        }
+        Node.connect(Gain);
+        var Pan = Fx && Fx.Pan != null ? Number(Fx.Pan) : 0;
+        if (this.Ctx.createStereoPanner && Math.abs(Pan) > 0.01) {
+            var Panner = this.Ctx.createStereoPanner();
+            Panner.pan.value = Math.max(-1, Math.min(1, Pan));
+            Gain.connect(Panner);
+            Panner.connect(this.Master);
+        } else {
+            Gain.connect(this.Master);
+        }
+
+        if (Fx && this.Delay && this.Convolver) {
+            var DelayMix = Fx.Delay != null ? Number(Fx.Delay) / 100 : 0;
+            var ReverbMix = Fx.Reverb != null ? Number(Fx.Reverb) / 100 : 0;
+            if (DelayMix > 0.01) {
+                var Dg = this.Ctx.createGain();
+                Dg.gain.value = DelayMix * 0.85;
+                Gain.connect(Dg);
+                Dg.connect(this.Delay);
+            }
+            if (ReverbMix > 0.01) {
+                var Rg = this.Ctx.createGain();
+                Rg.gain.value = ReverbMix * 0.7;
+                Gain.connect(Rg);
+                Rg.connect(this.Convolver);
+            }
+        }
+    }
+
+    PlayStepSynth(Kind, GainValue, When, Fx) {
         this.EnsureCtx();
-        this.StopSources();
+        var Start = When != null ? When : this.Ctx.currentTime;
+        var Amp = GainValue == null ? 0.85 : GainValue;
+        Kind = Kind || "kick";
+        var Gain = this.Ctx.createGain();
+        var Osc;
+        var Noise;
+        var I;
+
+        if (Kind === "kick") {
+            Osc = this.Ctx.createOscillator();
+            Osc.type = "sine";
+            Osc.frequency.setValueAtTime(140, Start);
+            Osc.frequency.exponentialRampToValueAtTime(40, Start + 0.12);
+            Gain.gain.setValueAtTime(Amp, Start);
+            Gain.gain.exponentialRampToValueAtTime(0.0001, Start + 0.22);
+            this.ConnectWithChannelFx(Osc, Gain, Fx);
+            Osc.start(Start);
+            Osc.stop(Start + 0.25);
+            this.Sources.push(Osc);
+        } else if (Kind === "snare") {
+            Osc = this.Ctx.createOscillator();
+            Osc.type = "triangle";
+            Osc.frequency.value = 180;
+            var OscGain = this.Ctx.createGain();
+            OscGain.gain.setValueAtTime(Amp * 0.35, Start);
+            OscGain.gain.exponentialRampToValueAtTime(0.0001, Start + 0.08);
+            var BufferSize = Math.floor(this.Ctx.sampleRate * 0.15);
+            var Buffer = this.Ctx.createBuffer(1, BufferSize, this.Ctx.sampleRate);
+            var Data = Buffer.getChannelData(0);
+            for (I = 0; I < BufferSize; I++) Data[I] = Math.random() * 2 - 1;
+            Noise = this.Ctx.createBufferSource();
+            Noise.buffer = Buffer;
+            Gain.gain.setValueAtTime(Amp * 0.7, Start);
+            Gain.gain.exponentialRampToValueAtTime(0.0001, Start + 0.12);
+            this.ConnectWithChannelFx(Osc, OscGain, Fx);
+            this.ConnectWithChannelFx(Noise, Gain, Fx);
+            Osc.start(Start);
+            Osc.stop(Start + 0.1);
+            Noise.start(Start);
+            this.Sources.push(Osc);
+            this.Sources.push(Noise);
+        } else {
+            var BufferSize2 = Math.floor(this.Ctx.sampleRate * 0.05);
+            var Buffer2 = this.Ctx.createBuffer(1, BufferSize2, this.Ctx.sampleRate);
+            var Data2 = Buffer2.getChannelData(0);
+            for (I = 0; I < BufferSize2; I++) Data2[I] = Math.random() * 2 - 1;
+            Noise = this.Ctx.createBufferSource();
+            Noise.buffer = Buffer2;
+            var Hp = this.Ctx.createBiquadFilter();
+            Hp.type = "highpass";
+            Hp.frequency.value = 6000;
+            Gain.gain.setValueAtTime(Amp * 0.55, Start);
+            Gain.gain.exponentialRampToValueAtTime(0.0001, Start + 0.04);
+            Noise.connect(Hp);
+            this.ConnectWithChannelFx(Hp, Gain, Fx);
+            Noise.start(Start);
+            this.Sources.push(Noise);
+        }
+        this.PruneSources();
+    }
+
+    EnsureMasterEq() {
+        this.EnsureCtx();
+        if (this.MasterEqLow) return;
+        this.MasterEqLow = this.Ctx.createBiquadFilter();
+        this.MasterEqLow.type = "lowshelf";
+        this.MasterEqLow.frequency.value = 250;
+        this.MasterEqMid = this.Ctx.createBiquadFilter();
+        this.MasterEqMid.type = "peaking";
+        this.MasterEqMid.frequency.value = 1000;
+        this.MasterEqMid.Q.value = 0.9;
+        this.MasterEqHigh = this.Ctx.createBiquadFilter();
+        this.MasterEqHigh.type = "highshelf";
+        this.MasterEqHigh.frequency.value = 4000;
+        try { this.Master.disconnect(); } catch (_) {}
+        this.Master.connect(this.MasterEqLow);
+        this.MasterEqLow.connect(this.MasterEqMid);
+        this.MasterEqMid.connect(this.MasterEqHigh);
+        this.MasterEqHigh.connect(this.Filter);
+    }
+
+    ApplyMasterEq(Eq) {
+        this.EnsureMasterEq();
+        Eq = Eq || {};
+        this.MasterEqLow.gain.value = Math.max(-24, Math.min(24, Number(Eq.Low) || 0));
+        this.MasterEqMid.gain.value = Math.max(-24, Math.min(24, Number(Eq.Mid) || 0));
+        this.MasterEqHigh.gain.value = Math.max(-24, Math.min(24, Number(Eq.High) || 0));
+    }
+
+    ScheduleClips(Clips, SongTimeSeconds, Options) {
+        this.EnsureCtx();
+        Options = Options || {};
+        if (Options.Clear !== false) {
+            this.StopSources();
+            this.ScheduledStepKeys = new Set();
+            this.StepScheduleEpoch++;
+        }
 
         var Now = this.Ctx.currentTime;
 
@@ -443,8 +624,7 @@ globalThis.AudioEngine = class {
             var VoiceScale = Math.min(1, 1 / Math.sqrt(Math.max(1, Clips.length * 0.35)));
             Gain.gain.value = BaseGain * VoiceScale;
 
-            Source.connect(Gain);
-            Gain.connect(this.Master);
+            this.ConnectWithChannelFx(Source, Gain, Clip.Fx);
 
             When = Now + OffsetInSong;
             Offset = 0;
@@ -468,9 +648,10 @@ globalThis.AudioEngine = class {
         }
     }
 
-    ScheduleSteps(Steps, SongTimeSeconds) {
+    ScheduleSteps(Steps, SongTimeSeconds, Options) {
         this.EnsureCtx();
-
+        Options = Options || {};
+        var LookAhead = Options.LookAhead != null ? Options.LookAhead : 8;
         var Now = this.Ctx.currentTime;
         var Index;
         var Step;
@@ -480,55 +661,47 @@ globalThis.AudioEngine = class {
         var Source;
         var Gain;
         var When;
+        var BaseGain;
+        var Scheduled = 0;
 
         for (Index = 0; Index < Steps.length; Index++) {
             Step = Steps[Index];
-            Buffer = this.Buffers.get(Step.Url);
-            if (!Buffer) continue;
-
             StartSec = this.BeatsToSeconds(Step.Beat);
             OffsetInSong = StartSec - SongTimeSeconds;
-            if (OffsetInSong < -0.05) continue;
-
-            Source = this.Ctx.createBufferSource();
-            Source.buffer = Buffer;
-            Source.playbackRate.value = Step.PlaybackRate || 1;
-
-            Gain = this.Ctx.createGain();
-            var BaseGain = Step.Gain == null ? 1 : Step.Gain;
-            var VoiceScale = Math.min(1, 1 / Math.sqrt(Math.max(1, Steps.length * 0.25)));
-            Gain.gain.value = BaseGain * VoiceScale;
-
-            Source.connect(Gain);
-            Gain.connect(this.Master);
+            // Only schedule the near future so voices are not pruned away
+            if (OffsetInSong < -0.02) continue;
+            if (OffsetInSong > LookAhead) continue;
 
             When = Now + OffsetInSong;
             if (When < Now) When = Now;
+            BaseGain = Step.Gain == null ? 0.9 : Step.Gain;
 
-            try {
-                Source.start(When);
-                this.Sources.push(Source);
-                this.PruneSources();
-            } catch (Error) {
-                console.warn("Step schedule failed", Error);
+            var Key = String(Math.round(Step.Beat * 1000) / 1000) + "|" + String(Step.Url || Step.Synth || "") + "|" + String(Step.ChannelId || "");
+            if (this.ScheduledStepKeys && this.ScheduledStepKeys.has(Key)) continue;
+            if (this.ScheduledStepKeys) this.ScheduledStepKeys.add(Key);
+
+            Buffer = Step.Url ? this.Buffers.get(Step.Url) : null;
+            if (Buffer) {
+                Source = this.Ctx.createBufferSource();
+                Source.buffer = Buffer;
+                Source.playbackRate.value = Step.PlaybackRate || 1;
+                Gain = this.Ctx.createGain();
+                Gain.gain.value = BaseGain;
+                this.ConnectWithChannelFx(Source, Gain, Step.Fx);
+                try {
+                    Source.start(When);
+                    this.Sources.push(Source);
+                    Scheduled++;
+                } catch (Error) {
+                    console.warn("Step schedule failed", Error);
+                }
+            } else {
+                this.PlayStepSynth(Step.Synth || "kick", BaseGain, When, Step.Fx);
+                Scheduled++;
             }
         }
-    }
-
-    async StartMicMonitor() {
-        this.EnsureCtx();
-        if (this.MicStream) return;
-
-        this.MicStream = await navigator.mediaDevices.getUserMedia({
-            audio: {
-                echoCancellation: false,
-                noiseSuppression: false,
-                autoGainControl: false
-            }
-        });
-
-        this.MicSource = this.Ctx.createMediaStreamSource(this.MicStream);
-        this.MicSource.connect(this.Master);
+        this.PruneSources();
+        return Scheduled;
     }
 
     PickRecorderMime() {

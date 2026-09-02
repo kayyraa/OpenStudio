@@ -11,10 +11,6 @@
     </script>
     <link rel="shortcut icon" href="Assets/Images/Open Studio.svg" type="image/x-icon">
     <link rel="stylesheet" href="Scripts/Style/Style.css">
-    <script src="Scripts/Cloud.js"></script>
-    <script src="Scripts/AudioEngine.js"></script>
-    <script src="Scripts/Plugins.js"></script>
-    <script src="Scripts/Global.d.js" defer></script>
     <title>Open Studio</title>
 </head>
 <body>
@@ -27,11 +23,16 @@
                 <button type="button" id="MenuSaveAsProject">Save As</button>
                 <button type="button" id="MenuPublishProject">Publish</button>
                 <button type="button" id="MenuRefreshBrowser">Refresh Browser</button>
+                <button type="button" id="MenuStudioSettings">Studio Settings</button>
             </div>
         </div>
         <div class="MenuItem" data-menu="Edit">
             <span class="MenuLabel">Edit</span>
             <div class="MenuDropdown">
+                <button type="button" id="MenuCut">Cut</button>
+                <button type="button" id="MenuCopy">Copy</button>
+                <button type="button" id="MenuPaste">Paste</button>
+                <button type="button" id="MenuDuplicate">Duplicate</button>
                 <button type="button" id="MenuClearNotes">Clear Selected Notes</button>
                 <button type="button" id="MenuStopTransport">Stop</button>
             </div>
@@ -42,13 +43,23 @@
                 <button type="button" id="MenuToggleLeftDock">Toggle Channel Rack</button>
                 <button type="button" id="MenuToggleRightDock">Toggle Browser</button>
                 <button type="button" id="MenuTogglePiano">Toggle Piano</button>
+                <button type="button" id="MenuOpenMixer">Mixer</button>
+            </div>
+        </div>
+        <div class="MenuItem" data-menu="Plugins">
+            <span class="MenuLabel">Plugins</span>
+            <div class="MenuDropdown">
+                <button type="button" id="MenuPluginTiming">Timing</button>
+                <button type="button" id="MenuPluginMixer">Mixer</button>
+                <button type="button" id="MenuPluginMasterEq">Master EQ</button>
+                <button type="button" id="MenuPluginAnalyzer">Spectrum Analyzer</button>
             </div>
         </div>
         <div class="MenuItem" data-menu="Transport">
             <span class="MenuLabel">Transport</span>
             <div class="MenuDropdown">
-                <button type="button" id="MenuToggleMetronome">Metronome On/Off</button>
-                <button type="button" id="MenuToggleCountIn">Count-In On/Off</button>
+                <button type="button" id="MenuPluginTiming">Timing (Metronome / Count-In)</button>
+                <button type="button" id="MenuOpenMixer">Mixer</button>
             </div>
         </div>
         <div class="MenuItem" data-menu="Effects" id="EffectsMenuItem">
@@ -75,7 +86,7 @@
             </div>
             <div class="Controls">
                 <button type="button" class="RecordButton" id="RecordButton" title="Record MIDI notes (starts playback)" aria-label="Record"></button>
-                <button type="button" class="MicButton IconImageBtn" id="MicButton" title="Record microphone" aria-label="Mic"><img style="width: 32px; height: 32px;" src="Assets/Images/Microphone.svg" alt="Mic"></button>
+                <button type="button" class="MicButton IconImageBtn" id="MicButton" title="Record microphone" aria-label="Mic"><img src="Assets/Images/Microphone.svg" alt="Mic"></button>
                 <img class="PlayButton" src="Assets/Images/Play.svg" alt="Play" title="Play / Pause (Space)">
                 <img class="StopButton" src="Assets/Images/Stop.svg" alt="Stop" title="Stop">
             </div>
@@ -85,12 +96,6 @@
                     <input class="Tempo" type="number" min="10" max="522" value="120">
                 </div>
                 <div class="TempoBubble"></div>
-            </div>
-            <div class="MetronomeGroup">
-                <button type="button" class="MetroBtn IconImageBtn" id="MetronomeBtn" title="Metronome"><img src="Assets/Images/Metronome.svg" alt="Metronome"></button>
-                <label class="MetroVolLabel" title="Metronome volume">Vol <input type="range" id="MetronomeVolume" min="0" max="100" value="70"></label>
-                <button type="button" class="CountInBtn" id="CountInBtn" title="Count-In on/off">Count-In</button>
-                <label class="CountInBeatsLabel" title="Count-in beats">Beats <input type="number" id="CountInBeats" min="1" max="32" value="4"></label>
             </div>
             <div class="PlaybackVolGroup" title="Playback volume">
                 <span>Vol</span>
@@ -104,6 +109,7 @@
             </div>
         </div>
         <div class="TopbarRight">
+            <button type="button" class="Button" id="OpenMixerBtn" title="Open mixer">Mixer</button>
             <button type="button" class="Button" id="SaveAsBtn" title="Save project as a new copy">Save As</button>
             <button type="button" class="Button" id="PublishBtn" title="Save project to cloud">Save</button>
             <span id="PublishStatus" class="PublishStatus"></span>
@@ -223,6 +229,132 @@
     </div>
 
     <div class="DragGhost" id="DragGhost"></div>
+
+    <div class="FloatingLayer" id="FloatingLayer"></div>
+    <div class="ContextMenu" id="AppContextMenu" style="display:none;"></div>
+
+    <div class="ModalOverlay" id="TimingPluginModal" style="display:none;">
+        <div class="Modal">
+            <div class="ModalHeader">
+                <span>Timing</span>
+                <button type="button" class="IconBtn IconImageBtn CloseIconBtn CloseModal" id="TimingPluginClose" data-modal="TimingPluginModal" title="Close"><img src="Assets/Images/Close.png" alt="Close"></button>
+            </div>
+            <div class="ModalBody">
+                <p class="ChannelFxHint">Metronome and count-in settings</p>
+                <div class="ChannelFxRows">
+                    <button type="button" class="Button" id="TimingMetronomeToggle">Metronome</button>
+                    <label>Metronome Volume <input type="range" id="TimingMetronomeVolume" min="0" max="100" value="70"></label>
+                    <button type="button" class="Button" id="TimingCountInToggle">Count-In</button>
+                    <label>Count-In Beats <input type="number" id="TimingCountInBeats" min="1" max="32" value="4"></label>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="ModalOverlay" id="StudioSettingsModal" style="display:none;">
+        <div class="Modal">
+            <div class="ModalHeader">
+                <span>Studio Settings</span>
+                <button type="button" class="IconBtn IconImageBtn CloseIconBtn CloseModal" id="StudioSettingsClose" data-modal="StudioSettingsModal" title="Close"><img src="Assets/Images/Close.png" alt="Close"></button>
+            </div>
+            <div class="ModalBody">
+                <div class="ChannelFxRows">
+                    <label>Theme
+                        <select id="SettingsTheme">
+                            <option value="dark">Dark</option>
+                            <option value="midnight">Midnight</option>
+                            <option value="graphite">Graphite</option>
+                            <option value="ember">Ember</option>
+                        </select>
+                    </label>
+                    <label>Audio Quality
+                        <select id="SettingsAudioQuality">
+                            <option value="low">Low (fewer voices)</option>
+                            <option value="medium">Medium</option>
+                            <option value="high" selected>High</option>
+                        </select>
+                    </label>
+                    <label>Timeline Length (beats)
+                        <input type="number" id="SettingsTimelineBeats" min="16" max="2048" step="16" value="256">
+                    </label>
+                    <label class="SettingsCheck"><input type="checkbox" id="SettingsFollowPlayhead" checked> Follow playhead while playing</label>
+                </div>
+                <div class="ModalActions">
+                    <button type="button" class="Button Secondary" id="StudioSettingsCancel">Cancel</button>
+                    <button type="button" class="Button Primary" id="StudioSettingsApply">Apply</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="ModalOverlay" id="MasterEqPluginModal" style="display:none;">
+        <div class="Modal">
+            <div class="ModalHeader">
+                <span>Master EQ</span>
+                <button type="button" class="IconBtn IconImageBtn CloseIconBtn CloseModal" id="MasterEqPluginClose" data-modal="MasterEqPluginModal" title="Close"><img src="Assets/Images/Close.png" alt="Close"></button>
+            </div>
+            <div class="ModalBody">
+                <p class="ChannelFxHint">3-band master equalizer</p>
+                <div class="ChannelFxRows">
+                    <label>Low <input type="range" id="MasterEqLow" min="-24" max="24" value="0"></label>
+                    <label>Mid <input type="range" id="MasterEqMid" min="-24" max="24" value="0"></label>
+                    <label>High <input type="range" id="MasterEqHigh" min="-24" max="24" value="0"></label>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="ModalOverlay" id="AnalyzerPluginModal" style="display:none;">
+        <div class="Modal AnalyzerModalBox">
+            <div class="ModalHeader">
+                <span>Spectrum Analyzer</span>
+                <button type="button" class="IconBtn IconImageBtn CloseIconBtn CloseModal" id="AnalyzerPluginClose" data-modal="AnalyzerPluginModal" title="Close"><img src="Assets/Images/Close.png" alt="Close"></button>
+            </div>
+            <div class="ModalBody">
+                <canvas id="AnalyzerCanvas" class="AnalyzerCanvas"></canvas>
+            </div>
+        </div>
+    </div>
+
+
+    <div class="ModalOverlay" id="MixerModal" style="display:none;">
+        <div class="Modal MixerModalBox">
+            <div class="ModalHeader">
+                <span>Mixer</span>
+                <button type="button" class="IconBtn IconImageBtn CloseIconBtn CloseModal" id="MixerClose" data-modal="MixerModal" title="Close"><img src="Assets/Images/Close.png" alt="Close"></button>
+            </div>
+            <div class="ModalBody MixerBody">
+                <div class="MixerStrips" id="MixerStrips"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="ModalOverlay" id="ChannelFxModal" style="display:none;">
+        <div class="Modal ChannelFxModalBox">
+            <div class="ModalHeader">
+                <span id="ChannelFxTitle">Channel Effects</span>
+                <button class="IconBtn IconImageBtn CloseIconBtn CloseModal" data-modal="ChannelFxModal"><img src="Assets/Images/Close.png" alt="Close"></button>
+            </div>
+            <div class="ModalBody">
+                <p class="ChannelFxHint">Per-channel FX (in addition to master Effects)</p>
+                <div class="ChannelFxRows">
+                    <label>EQ Low <input type="range" id="ChFxEqLow" min="-24" max="24" value="0"></label>
+                    <label>EQ Mid <input type="range" id="ChFxEqMid" min="-24" max="24" value="0"></label>
+                    <label>EQ High <input type="range" id="ChFxEqHigh" min="-24" max="24" value="0"></label>
+                    <label>Filter <input type="range" id="ChFxFilter" min="0" max="100" value="100"></label>
+                    <label>Delay <input type="range" id="ChFxDelay" min="0" max="100" value="0"></label>
+                    <label>Reverb <input type="range" id="ChFxReverb" min="0" max="100" value="0"></label>
+                    <label>Drive <input type="range" id="ChFxDrive" min="0" max="100" value="0"></label>
+                    <label>Pan <input type="range" id="ChFxPan" min="-100" max="100" value="0"></label>
+                </div>
+                <div class="ModalActions">
+                    <button type="button" class="Button Secondary" id="ChannelFxReset">Reset</button>
+                    <button type="button" class="Button Primary" id="ChannelFxClose">Done</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
 
     <div class="ModalOverlay" id="PianoRollModal" style="display:none;">
         <div class="PianoRollWindow">
@@ -367,5 +499,10 @@
         </div>
     </div>
 
+    <script src="Scripts/Cloud.js"></script>
+    <script src="Scripts/AudioEngine.js"></script>
+    <script src="Scripts/Plugins.js"></script>
+    <script src="Scripts/Global.d.js"></script>
+    <script src="Scripts/Gui.js"></script>
 </body>
 </html>
