@@ -394,6 +394,39 @@ globalThis.UploadSample = async (FileOrBlob, Meta = {}) => {
 };
 
 
+
+globalThis.UpdateAccount = async (Id, Fields) => {
+    if (!Id) throw new TypeError("UpdateAccount: Id is required");
+    if (!Fields || typeof Fields !== "object") throw new TypeError("UpdateAccount: Fields required");
+    const Payload = { ...Fields };
+    await AccountsDb.UpdateDocument(Id, Payload);
+    return { Id, ...Payload };
+};
+
+globalThis.RenameSample = async (Id, Name, Author) => {
+    if (!Id) throw new TypeError("RenameSample: Id is required");
+    const Doc = await SamplesDb.GetDocumentById(Id, true);
+    const Data = DocData(Doc);
+    if (!Data) throw new Error("Sample not found");
+    if (Author && String(Data.Author || "") !== String(Author)) {
+        throw new Error("Only the author can rename this sample");
+    }
+    await SamplesDb.UpdateDocument(Id, { Name: String(Name || Data.Name || "Untitled") });
+    return { Id, Name: String(Name || Data.Name || "Untitled") };
+};
+
+globalThis.RenameProject = async (Id, Name, Author) => {
+    if (!Id) throw new TypeError("RenameProject: Id is required");
+    const Doc = await ProjectsDb.GetDocumentById(Id, true);
+    const Data = DocData(Doc);
+    if (!Data) throw new Error("Project not found");
+    if (Author && String(Data.Author || "") !== String(Author)) {
+        throw new Error("Only the author can rename this project");
+    }
+    await ProjectsDb.UpdateDocument(Id, { Name: String(Name || Data.Name || "Untitled Project") });
+    return { Id, Name: String(Name || Data.Name || "Untitled Project") };
+};
+
 globalThis.DeleteSample = async (Id, Author) => {
     if (!Id) throw new TypeError("DeleteSample: Id is required");
     const Doc = await SamplesDb.GetDocumentById(Id, true);
@@ -420,17 +453,19 @@ globalThis.SaveProject = async (Project, Options = {}) => {
         Timestamp: Project.Timestamp || Date.now()
     };
 
+    // Update only when the document exists and belongs to the current user.
+    // Otherwise create a new document (first save / foreign project / missing id).
     if (Project.Id) {
-        const Existing = await LoadProjectDoc(Project.Id);
-        if (!Existing) {
-            throw new Error("Project not found");
+        try {
+            const Existing = await LoadProjectDoc(Project.Id);
+            if (Existing && String(Existing.Author || "") === String(CurrentUser)) {
+                Payload.Author = Existing.Author;
+                await ProjectsDb.UpdateDocument(Project.Id, Payload);
+                return { Id: Project.Id, ...Payload };
+            }
+        } catch (_) {
+            // fall through to create
         }
-        if (String(Existing.Author || "") !== String(CurrentUser)) {
-            throw new Error("Only the author can overwrite this project. Use Save As (clear id) or open your own project.");
-        }
-        Payload.Author = Existing.Author;
-        await ProjectsDb.UpdateDocument(Project.Id, Payload);
-        return { Id: Project.Id, ...Payload };
     }
 
     const { Id } = await ProjectsDb.NewDocument(Payload);

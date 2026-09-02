@@ -33,7 +33,10 @@ globalThis.AudioEngine = class {
         this.MicRecording = false;
         this.MetronomeEnabled = false;
         this.MetronomeVolume = 0.7;
+        this.MetronomeBus = null;
+        this.MetroSources = [];
         this.PreRollEnabled = false;
+        this.PreRollBeats = 4;
     }
 
     EnsureCtx() {
@@ -42,6 +45,9 @@ globalThis.AudioEngine = class {
 
             this.Master = this.Ctx.createGain();
             this.Master.gain.value = 0.85;
+
+            this.MetronomeBus = this.Ctx.createGain();
+            this.MetronomeBus.gain.value = this.MetronomeEnabled ? (this.MetronomeVolume != null ? this.MetronomeVolume : 0.7) : 0;
 
             this.Filter = this.Ctx.createBiquadFilter();
             this.Filter.type = "lowpass";
@@ -84,6 +90,8 @@ globalThis.AudioEngine = class {
             this.Limiter.connect(this.Analyser);
             this.Analyser.connect(this.Ctx.destination);
 
+            this.MetronomeBus.connect(this.Ctx.destination);
+
             this.Filter.connect(this.Delay);
             this.Delay.connect(this.DelayFeedback);
             this.DelayFeedback.connect(this.Delay);
@@ -102,24 +110,80 @@ globalThis.AudioEngine = class {
         return this.Ctx;
     }
 
-    PlayMetronomeTick(IsAccent, Time) {
+    EnsureMetronomeBus() {
         this.EnsureCtx();
+        if (!this.MetronomeBus) {
+            this.MetronomeBus = this.Ctx.createGain();
+            this.MetronomeBus.connect(this.Ctx.destination);
+        }
+        this.ApplyMetronomeGain();
+        return this.MetronomeBus;
+    }
+
+    ApplyMetronomeGain() {
+        if (!this.MetronomeBus || !this.Ctx) return;
+        if (this.PreRollActive) return;
+        var Target = this.MetronomeEnabled
+            ? Math.max(0, Math.min(1, this.MetronomeVolume != null ? this.MetronomeVolume : 0.7))
+            : 0;
+        try {
+            this.MetronomeBus.gain.cancelScheduledValues(this.Ctx.currentTime);
+            this.MetronomeBus.gain.setValueAtTime(Target, this.Ctx.currentTime);
+        } catch (_) {
+            this.MetronomeBus.gain.value = Target;
+        }
+    }
+
+    SetMetronomeEnabled(On) {
+        this.MetronomeEnabled = !!On;
+        this.ApplyMetronomeGain();
+        if (!this.MetronomeEnabled) {
+            this.ClearMetronomeSources();
+        }
+    }
+
+    SetMetronomeVolume(Vol) {
+        this.MetronomeVolume = Math.max(0, Math.min(1, Number(Vol) || 0));
+        this.ApplyMetronomeGain();
+    }
+
+    ClearMetronomeSources() {
+        var Index;
+        if (!this.MetroSources) this.MetroSources = [];
+        for (Index = 0; Index < this.MetroSources.length; Index++) {
+            try { this.MetroSources[Index].stop(0); } catch (_) {}
+        }
+        this.MetroSources = [];
+    }
+
+    PlayMetronomeTick(IsAccent, Time) {
+        this.EnsureMetronomeBus();
         var Osc = this.Ctx.createOscillator();
         var Gain = this.Ctx.createGain();
         Osc.type = "sine";
         Osc.frequency.value = IsAccent ? 1200 : 800;
-        var Vol = this.MetronomeVolume != null ? this.MetronomeVolume : 0.7;
-        var GainValue = IsAccent ? Vol : Vol * 0.6;
+        // Relative tick level; master metro volume is on MetronomeBus so it can hot-change
+        var GainValue = IsAccent ? 1 : 0.55;
         var Start = Time || this.Ctx.currentTime;
         Gain.gain.setValueAtTime(GainValue, Start);
         Gain.gain.exponentialRampToValueAtTime(0.0001, Start + 0.05);
         Osc.connect(Gain);
-        Gain.connect(this.Master || this.Ctx.destination);
+        Gain.connect(this.MetronomeBus);
         Osc.start(Start);
-        Osc.stop(Start + 0.05);
+        Osc.stop(Start + 0.06);
+        if (!this.MetroSources) this.MetroSources = [];
+        this.MetroSources.push(Osc);
+        var Self = this;
+        Osc.onended = function () {
+            var I = Self.MetroSources.indexOf(Osc);
+            if (I >= 0) Self.MetroSources.splice(I, 1);
+        };
     }
 
     ScheduleMetronome(SongTimeSeconds, TotalBeats) {
+        this.EnsureMetronomeBus();
+        this.ClearMetronomeSources();
+        this.ApplyMetronomeGain();
         if (!this.MetronomeEnabled || !this.Ctx) return;
         var Now = this.Ctx.currentTime;
         var BeatsCount = TotalBeats || 128;
@@ -143,19 +207,37 @@ globalThis.AudioEngine = class {
 
     PlayPreRoll(Callback) {
         this.EnsureCtx();
-        var BeatSec = 60 / this.Bpm;
+        if (!this.MetronomeBus) {
+            this.MetronomeBus = this.Ctx.createGain();
+            this.MetronomeBus.connect(this.Ctx.destination);
+        }
+        var Beats = Math.max(1, Math.min(32, Number(this.PreRollBeats) || 4));
+        var BeatSec = 60 / Math.max(1, this.Bpm);
         var Now = this.Ctx.currentTime;
         var Beat;
         var Time;
-
-        for (Beat = 0; Beat < 4; Beat++) {
-            Time = Now + Beat * BeatSec;
-            this.PlayMetronomeTick(Beat === 0, Time);
+        var WasEnabled = this.MetronomeEnabled;
+        var Vol = Math.max(0.35, this.MetronomeVolume != null ? this.MetronomeVolume : 0.7);
+        this.PreRollActive = true;
+        // Instant open bus so count-in is always audible
+        try {
+            this.MetronomeBus.gain.cancelScheduledValues(Now);
+            this.MetronomeBus.gain.setValueAtTime(Vol, Now);
+        } catch (_) {
+            this.MetronomeBus.gain.value = Vol;
         }
 
+        for (Beat = 0; Beat < Beats; Beat++) {
+            Time = Now + Beat * BeatSec;
+            this.PlayMetronomeTick(Beat === 0 || (Beat % 4 === 0), Time);
+        }
+
+        var Self = this;
         setTimeout(function () {
+            Self.PreRollActive = false;
+            Self.ApplyMetronomeGain();
             if (Callback) Callback();
-        }, BeatSec * 4 * 1000);
+        }, Math.max(50, BeatSec * Beats * 1000));
     }
 
     GetAnalyserData() {
@@ -554,12 +636,18 @@ globalThis.AudioEngine = class {
 
     StopSources() {
         var Index;
+        var Src;
         for (Index = 0; Index < this.Sources.length; Index++) {
+            Src = this.Sources[Index];
             try {
-                this.Sources[Index].stop();
+                if (Src.stop) Src.stop(0);
+            } catch (_) {}
+            try {
+                if (Src.disconnect) Src.disconnect();
             } catch (_) {}
         }
         this.Sources = [];
+        this.ClearMetronomeSources();
         this.Playing = false;
     }
 

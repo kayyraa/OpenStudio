@@ -1989,9 +1989,13 @@ html, body {
     z-index: 200;
 }
 
-.MenuItem.Open .MenuDropdown,
-.MenuItem:hover .MenuDropdown {
+.MenuItem.Open .MenuDropdown {
     display: flex;
+}
+
+.MenuItem:hover > .MenuLabel {
+    background: #222;
+    color: var(--Text);
 }
 
 .MenuDropdown button {
@@ -2276,4 +2280,486 @@ html, body {
 }
 .FxGroup input[type="range"] {
     width: 42px;
+}
+
+
+/* Thinner piano keys */
+.PianoKeys {
+    gap: 1px !important;
+    padding: 4px 6px 6px !important;
+    align-items: stretch !important;
+}
+.PianoKey.White {
+    min-width: 14px !important;
+    max-width: 22px !important;
+    flex: 1 1 14px !important;
+    font-size: 7px !important;
+    padding-bottom: 2px !important;
+    border-radius: 0 0 2px 2px !important;
+}
+.PianoKey.Black {
+    flex: 0 0 9px !important;
+    min-width: 9px !important;
+    max-width: 10px !important;
+    margin: 0 -4px !important;
+    height: 52% !important;
+    font-size: 0 !important;
+    border-radius: 0 0 2px 2px !important;
+}
+.PianoKey {
+    box-shadow: none !important;
+}
+
+/* Profile clickable */
+.UserChip .Profile {
+    cursor: pointer;
+    width: 22px;
+    height: 22px;
+    object-fit: cover;
+    background: #1a1a1a;
+}
+.UserChip .Profile:hover {
+    outline: 1px solid var(--Accent);
+}
+
+/* Piano resize handle always reachable */
+.DockResizeHorizontal {
+    height: 6px !important;
+    cursor: ns-resize !important;
+    background: transparent;
+    flex-shrink: 0;
+    position: relative;
+    z-index: 5;
+}
+.DockResizeHorizontal:hover,
+.PianoDock.Resizing .DockResizeHorizontal {
+    background: var(--Accent) !important;
+    opacity: 0.9;
+}
+.PianoDock {
+    height: var(--PianoH, 140px) !important;
+}
+
+
+/* Icon image buttons */
+.IconImageBtn {
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    padding: 0 !important;
+    min-width: 24px;
+    width: 28px;
+    height: 100%;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+}
+.IconImageBtn img {
+    width: 16px;
+    height: 16px;
+    object-fit: contain;
+    display: block;
+    pointer-events: none;
+    filter: brightness(0.9);
+}
+.IconImageBtn:hover img {
+    filter: brightness(1.15) drop-shadow(0 0 2px rgba(255, 106, 0, 0.35));
+}
+.IconBtn.IconImageBtn {
+    width: 22px;
+    height: 22px;
+    min-width: 22px;
+}
+.IconBtn.IconImageBtn img {
+    width: 14px;
+    height: 14px;
+}
+.MicButton.IconImageBtn {
+    width: 32px !important;
+    min-width: 32px !important;
+    height: 100%;
+    margin: 0;
+    border: none;
+    border-radius: 0;
+    background: transparent;
+}
+.MicButton.IconImageBtn img {
+    width: 16px;
+    height: 16px;
+}
+.MicButton.Active {
+    background: rgba(200, 40, 40, 0.25) !important;
+}
+.MicButton.Active img {
+    filter: brightness(1.2) drop-shadow(0 0 4px rgba(255, 60, 60, 0.6));
+}
+.MetroBtn.IconImageBtn {
+    width: 28px;
+    min-width: 28px;
+    height: 22px;
+    padding: 0;
+}
+.MetroBtn.Active {
+    background: var(--AccentSoft, rgba(255,106,0,0.14)) !important;
+    border-color: var(--Accent) !important;
+}
+.MetroBtn.Active img {
+    filter: brightness(1.2) drop-shadow(0 0 3px rgba(255, 106, 0, 0.5));
+}
+.NewProjectBtn.IconImageBtn {
+    width: 32px;
+    min-width: 32px;
+}
+
+/* Effects panel in menu bar (Audacity-style) */
+.MenuDropdown.EffectsPanel {
+    min-width: 220px;
+    padding: 10px 12px;
+    gap: 8px;
+}
+.EffectsRow {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+.EffectsRow label {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    color: var(--Text);
+    font-size: 11px;
+    white-space: nowrap;
+}
+.EffectsRow input[type="range"] {
+    width: 120px;
+    flex-shrink: 0;
+}
+
+/* Piano keys fill available width without sparse gaps */
+.PianoKeys {
+    gap: 0 !important;
+    padding: 6px 8px 8px !important;
+    display: flex !important;
+    align-items: stretch !important;
+    justify-content: stretch !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+}
+.PianoKey.White {
+    flex: 1 1 0 !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    width: auto !important;
+    font-size: 8px !important;
+    padding-bottom: 4px !important;
+    border-radius: 0 0 3px 3px !important;
+}
+.PianoKey.Black {
+    flex: 0 0 auto !important;
+    width: 1.6% !important;
+    min-width: 10px !important;
+    max-width: 18px !important;
+    margin: 0 -0.85% !important;
+    height: 58% !important;
+    font-size: 0 !important;
+    border-radius: 0 0 2px 2px !important;
+    z-index: 2;
+}
+
+
+.PlaybackVolGroup {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 0 10px;
+    height: 100%;
+    color: var(--TextDim);
+    font-size: 11px;
+    border-right: 1px solid var(--Border);
+    flex-shrink: 0;
+}
+.PlaybackVolGroup input[type="range"] {
+    width: 72px;
+}
+.SampleActions .IconImageBtn img {
+    width: 12px;
+    height: 12px;
+}
+.SaveSampleBtn.IconImageBtn {
+    width: 22px;
+    height: 20px;
+}
+
+
+/* Close icon: DockExpand rotated 45deg = X, tinted red */
+.CloseIconBtn img {
+    width: 14px !important;
+    height: 14px !important;
+    transform: rotate(45deg);
+    filter: invert(22%) sepia(95%) saturate(5000%) hue-rotate(350deg) brightness(95%) contrast(105%) !important;
+}
+.CloseIconBtn:hover img {
+    filter: invert(30%) sepia(95%) saturate(5000%) hue-rotate(350deg) brightness(110%) contrast(105%) drop-shadow(0 0 3px rgba(255, 60, 60, 0.55)) !important;
+}
+
+/* Confirm / Notice modal actions - never full-width primary */
+.ModalActions {
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+    gap: 8px !important;
+    margin-top: 14px !important;
+    justify-content: flex-end !important;
+    align-items: center !important;
+    width: 100% !important;
+}
+.ModalActions .Button {
+    width: auto !important;
+    flex: 0 0 auto !important;
+    min-width: 88px !important;
+    max-width: 140px !important;
+    height: 32px !important;
+    margin: 0 !important;
+}
+.ModalActions .Button.Primary,
+.ModalActions .Button.Danger {
+    width: auto !important;
+}
+.Button.Danger {
+    background: #c44 !important;
+    border-color: #c44 !important;
+    color: #fff !important;
+}
+.Button.Danger:hover {
+    background: #d55 !important;
+    border-color: #d55 !important;
+}
+#ConfirmModal .Modal,
+#NoticeModal .Modal {
+    width: 360px;
+    max-width: 94vw;
+}
+#ConfirmMessage,
+#NoticeMessage {
+    white-space: pre-wrap;
+    word-break: break-word;
+    line-height: 1.45;
+}
+
+.CountInBeatsLabel {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    color: var(--TextDim);
+    font-size: 10px;
+}
+.CountInBeatsLabel input[type="number"] {
+    width: 2.6em;
+    background: #0e0e0e;
+    border: 1px solid #333;
+    color: var(--Text);
+    padding: 2px 4px;
+    height: 22px;
+}
+
+#EventGraphCanvas {
+    cursor: crosshair;
+}
+
+
+/* Hide number input spinners everywhere */
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+    -webkit-appearance: none !important;
+    margin: 0 !important;
+    display: none !important;
+}
+input[type="number"] {
+    -moz-appearance: textfield !important;
+    appearance: textfield !important;
+}
+
+/* Close.png - no rotate filter needed */
+.CloseIconBtn img {
+    transform: none !important;
+    filter: none !important;
+    width: 14px !important;
+    height: 14px !important;
+}
+.CloseIconBtn:hover img {
+    filter: brightness(1.15) !important;
+}
+
+.BtnIcon {
+    width: 14px;
+    height: 14px;
+    vertical-align: middle;
+    margin-right: 6px;
+    object-fit: contain;
+}
+#PromptOk {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+}
+#PromptInput {
+    width: 100%;
+    background: #121212;
+    border: 1px solid var(--Border);
+    color: var(--Text);
+    padding: 8px 10px;
+    margin-top: 4px;
+    outline: none;
+}
+#PromptInput:focus {
+    border-color: var(--Accent);
+}
+
+/* Piano roll: backdrop is visual only, window captures clicks */
+#PianoRollModal {
+    pointer-events: auto !important;
+}
+#PianoRollModal .PianoRollWindow {
+    pointer-events: auto !important;
+}
+
+
+/* Equal white keys + centered black keys */
+.PianoKeys {
+    position: relative !important;
+    display: block !important;
+    flex: 1 !important;
+    width: 100% !important;
+    height: 100% !important;
+    min-height: 72px !important;
+    padding: 6px 8px 8px !important;
+    gap: 0 !important;
+    overflow: hidden !important;
+    background: linear-gradient(180deg, #141416, #0e0e10) !important;
+    box-sizing: border-box !important;
+}
+.PianoWhites {
+    display: flex !important;
+    align-items: stretch !important;
+    width: 100% !important;
+    height: 100% !important;
+    gap: 1px !important;
+}
+.PianoKey.White {
+    position: relative !important;
+    flex: 1 1 0 !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    width: auto !important;
+    height: 100% !important;
+    margin: 0 !important;
+    border: 1px solid #222 !important;
+    border-radius: 0 0 4px 4px !important;
+    background: #ececec !important;
+    color: #444 !important;
+    font-size: 9px !important;
+    padding: 0 0 6px !important;
+    display: flex !important;
+    align-items: flex-end !important;
+    justify-content: center !important;
+    box-shadow: inset 0 -2px 0 #ccc !important;
+    z-index: 1 !important;
+}
+.PianoKey.Black {
+    position: absolute !important;
+    top: 6px !important;
+    flex: none !important;
+    width: 3.2% !important;
+    min-width: 12px !important;
+    max-width: 22px !important;
+    height: 58% !important;
+    margin: 0 !important;
+    transform: translateX(-50%) !important;
+    border: 1px solid #000 !important;
+    border-radius: 0 0 3px 3px !important;
+    background: #1a1a1a !important;
+    color: #888 !important;
+    font-size: 0 !important;
+    padding: 0 !important;
+    z-index: 3 !important;
+    box-shadow: inset 0 -2px 0 #000, 0 2px 4px rgba(0,0,0,0.45) !important;
+}
+.PianoKey.White:hover { background: #fff !important; }
+.PianoKey.Black:hover { background: #2a2a2a !important; }
+.PianoKey.Down {
+    background: var(--Accent) !important;
+    color: #111 !important;
+    transform: translateY(1px) !important;
+    box-shadow: none !important;
+}
+.PianoKey.Black.Down {
+    transform: translateX(-50%) translateY(1px) !important;
+}
+
+/* Compact piano toolbar + synth dropdown */
+.PianoToolbar {
+    height: 30px !important;
+    gap: 6px !important;
+    overflow: visible !important;
+}
+.PianoCompactLabel {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    white-space: nowrap;
+    font-size: 11px;
+}
+.PianoMenuWrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+    height: 100%;
+}
+.PianoMenuBtn.Active {
+    border-color: var(--Accent);
+    color: var(--Accent);
+}
+.PianoDropdown {
+    position: absolute;
+    bottom: calc(100% + 4px);
+    right: 0;
+    min-width: 220px;
+    background: #1c1c1f;
+    border: 1px solid #3a3a42;
+    box-shadow: 0 10px 28px rgba(0,0,0,0.55);
+    padding: 10px;
+    display: none;
+    flex-direction: column;
+    gap: 8px;
+    z-index: 300;
+}
+.PianoDropRow {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+.PianoDropRow label {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+    flex: 1;
+    color: var(--Text);
+    font-size: 11px;
+    white-space: nowrap;
+}
+.PianoDropRow input[type="range"] {
+    width: 72px;
+}
+.PianoDropRow select {
+    background: #0e0e0e;
+    border: 1px solid #333;
+    color: var(--Text);
+    padding: 2px 4px;
+}
+.PianoDock.Collapsed .PianoMenuWrap,
+.PianoDock.Collapsed .PianoDropdown {
+    display: none !important;
 }

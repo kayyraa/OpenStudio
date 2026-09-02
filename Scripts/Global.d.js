@@ -8,6 +8,7 @@ var State = {
         Time: 0,
         Playing: false
     },
+    TransportGeneration: 0,
     PixelsPerBeat: 48,
     TrackHeight: 64,
     SelectedChannelId: null,
@@ -43,7 +44,8 @@ var State = {
         HighMidi: 96,
         Drag: null,
         EventGraphParam: "Cutoff",
-        GraphDrag: null
+        GraphDrag: null,
+        GraphHoverIndex: -1
     }
 };
 
@@ -104,17 +106,32 @@ function HideModal(Id) {
 
 var ConfirmCallback = null;
 
-function ShowConfirmModal(Message, OnConfirm) {
+function ShowConfirmModal(Message, OnConfirm, Options) {
+    Options = Options || {};
     var MsgEl = document.querySelector("#ConfirmMessage");
+    var TitleEl = document.querySelector("#ConfirmTitle");
+    var OkBtn = document.querySelector("#ConfirmOk");
     if (MsgEl) MsgEl.textContent = Message || "Are you sure?";
+    if (TitleEl) TitleEl.textContent = Options.Title || "Confirm";
+    if (OkBtn) OkBtn.textContent = Options.OkLabel || "Delete";
     ConfirmCallback = OnConfirm || null;
     ShowModal("ConfirmModal");
+}
+
+function ShowNotice(Message, Title) {
+    var MsgEl = document.querySelector("#NoticeMessage");
+    var TitleEl = document.querySelector("#NoticeTitle");
+    if (MsgEl) MsgEl.textContent = Message || "";
+    if (TitleEl) TitleEl.textContent = Title || "Notice";
+    ShowModal("NoticeModal");
 }
 
 function BindConfirmModal() {
     var OkBtn = document.querySelector("#ConfirmOk");
     var CancelBtn = document.querySelector("#ConfirmCancel");
     var Overlay = document.querySelector("#ConfirmModal");
+    var NoticeOk = document.querySelector("#NoticeOk");
+    var NoticeOverlay = document.querySelector("#NoticeModal");
 
     if (OkBtn) {
         OkBtn.addEventListener("click", function () {
@@ -142,6 +159,81 @@ function BindConfirmModal() {
             }
         });
     }
+
+    if (NoticeOk) {
+        NoticeOk.addEventListener("click", function () {
+            HideModal("NoticeModal");
+        });
+    }
+    if (NoticeOverlay) {
+        NoticeOverlay.addEventListener("mousedown", function (Event) {
+            if (Event.target === NoticeOverlay) HideModal("NoticeModal");
+        });
+    }
+
+    var PromptOk = document.querySelector("#PromptOk");
+    var PromptCancel = document.querySelector("#PromptCancel");
+    var PromptOverlay = document.querySelector("#PromptModal");
+    var PromptInput = document.querySelector("#PromptInput");
+
+    function ResolvePrompt(Ok) {
+        var Fn = PromptCallback;
+        var Value = PromptInput ? PromptInput.value : "";
+        PromptCallback = null;
+        HideModal("PromptModal");
+        if (Ok && Fn) Fn(Value);
+        else if (!Ok && PromptCancelCallback) {
+            var C = PromptCancelCallback;
+            PromptCancelCallback = null;
+            C();
+        }
+    }
+
+    if (PromptOk) {
+        PromptOk.addEventListener("click", function () { ResolvePrompt(true); });
+    }
+    if (PromptCancel) {
+        PromptCancel.addEventListener("click", function () { ResolvePrompt(false); });
+    }
+    if (PromptInput) {
+        PromptInput.addEventListener("keydown", function (Event) {
+            if (Event.key === "Enter") {
+                Event.preventDefault();
+                ResolvePrompt(true);
+            }
+            if (Event.key === "Escape") {
+                Event.preventDefault();
+                ResolvePrompt(false);
+            }
+        });
+    }
+    if (PromptOverlay) {
+        PromptOverlay.addEventListener("mousedown", function (Event) {
+            if (Event.target === PromptOverlay) ResolvePrompt(false);
+        });
+    }
+}
+
+var PromptCallback = null;
+var PromptCancelCallback = null;
+
+function ShowPromptModal(Options) {
+    Options = Options || {};
+    var TitleEl = document.querySelector("#PromptTitle");
+    var LabelEl = document.querySelector("#PromptLabel");
+    var InputEl = document.querySelector("#PromptInput");
+    if (TitleEl) TitleEl.textContent = Options.Title || "Rename";
+    if (LabelEl) LabelEl.textContent = Options.Label || "Name";
+    if (InputEl) {
+        InputEl.value = Options.Value != null ? String(Options.Value) : "";
+        setTimeout(function () {
+            InputEl.focus();
+            InputEl.select();
+        }, 30);
+    }
+    PromptCallback = Options.OnConfirm || null;
+    PromptCancelCallback = Options.OnCancel || null;
+    ShowModal("PromptModal");
 }
 
 function BindAuthUi() {
@@ -248,16 +340,65 @@ function UpdateAuthUi() {
         SignInButton.style.display = "none";
         UserChip.style.display = "flex";
         DisplayNameLabel.textContent = State.User.DisplayName || State.User.Username;
-        if (State.User.Image) {
-            ProfileImg.src = State.User.Image;
+        if (ProfileImg) {
             ProfileImg.style.display = "block";
-        } else {
-            ProfileImg.style.display = "none";
+            ProfileImg.src = State.User.Image || "Assets/Images/Account.svg";
+            ProfileImg.onerror = function () {
+                ProfileImg.onerror = null;
+                ProfileImg.src = "Assets/Images/Account.svg";
+            };
         }
     } else {
         SignInButton.style.display = "flex";
         UserChip.style.display = "none";
     }
+}
+
+function BindProfileImageChange() {
+    var Input = document.querySelector("#ProfileImageInput");
+    if (!ProfileImg || !Input) return;
+
+    ProfileImg.style.cursor = "pointer";
+    ProfileImg.title = "Change profile image";
+
+    ProfileImg.addEventListener("click", function (Event) {
+        Event.preventDefault();
+        Event.stopPropagation();
+        if (!State.User) return;
+        Input.click();
+    });
+
+    Input.addEventListener("change", function () {
+        var File = Input.files && Input.files[0];
+        Input.value = "";
+        if (!File || !State.User) return;
+        if (!File.type || File.type.indexOf("image/") !== 0) {
+            ShowNotice("Please choose an image file.");
+            return;
+        }
+        if (File.size > 1.5 * 1024 * 1024) {
+            ShowNotice("Image too large (max 1.5 MB).");
+            return;
+        }
+        var Reader = new FileReader();
+        Reader.onload = function () {
+            var DataUrl = String(Reader.result || "");
+            if (!DataUrl) return;
+            var AccountId = State.User.Id;
+            if (!AccountId) {
+                State.User.Image = DataUrl;
+                SetUser(State.User);
+                return;
+            }
+            UpdateAccount(AccountId, { Image: DataUrl }).then(function () {
+                State.User.Image = DataUrl;
+                SetUser(State.User);
+            }).catch(function (Err) {
+                ShowNotice(Err.message || "Could not update profile image");
+            });
+        };
+        Reader.readAsDataURL(File);
+    });
 }
 
 function RestoreSession() {
@@ -277,10 +418,18 @@ function RestoreSession() {
 }
 
 function SaveDockWidths() {
+    var Lw = DockLeft.classList.contains("Collapsed") ? null : DockLeft.offsetWidth;
+    var Rw = DockRight.classList.contains("Collapsed") ? null : DockRight.offsetWidth;
     localStorage.setItem("OsDocks", JSON.stringify({
-        Left: DockLeft.offsetWidth,
-        Right: DockRight.offsetWidth
+        Left: Lw || parseInt(localStorage.getItem("OsDockLeft") || "200", 10),
+        Right: Rw || parseInt(localStorage.getItem("OsDockRight") || "240", 10)
     }));
+    if (Lw && Lw > 40) {
+        try { localStorage.setItem("OsDockLeft", String(Lw)); } catch (_) {}
+    }
+    if (Rw && Rw > 40) {
+        try { localStorage.setItem("OsDockRight", String(Rw)); } catch (_) {}
+    }
 }
 
 function BindDocks() {
@@ -393,6 +542,7 @@ function StartPlaybackFromPlayhead() {
     Engine.SetBpm(Number(TempoInput.value) || 120);
 
     function DoStart() {
+        State.TransportGeneration = (State.TransportGeneration || 0) + 1;
         State.Simulation.Playing = true;
         UpdatePlayIcon();
         return PreloadTransportAssets().then(function () {
@@ -421,7 +571,7 @@ function TogglePlay() {
     if (State.Simulation.Playing) {
         State.Simulation.Time = Engine.GetSongTime();
         if (State.PianoRoll && State.PianoRoll.Open) DrawPianoRoll();
-        Engine.Stop();
+        HardStopAllVoices();
         State.Simulation.Playing = false;
         State.Recording = false;
         UpdatePlayIcon();
@@ -433,10 +583,48 @@ function TogglePlay() {
     StartPlaybackFromPlayhead();
 }
 
+
+function HardStopAllVoices() {
+    State.TransportGeneration = (State.TransportGeneration || 0) + 1;
+    var Midi;
+    var Voice;
+    var Def;
+    for (Midi in State.ActiveVoices) {
+        if (!State.ActiveVoices.hasOwnProperty(Midi)) continue;
+        Voice = State.ActiveVoices[Midi];
+        try {
+            if (Voice.Gain && Voice.Gain.gain) {
+                Voice.Gain.gain.cancelScheduledValues(Engine.Ctx ? Engine.Ctx.currentTime : 0);
+                Voice.Gain.gain.value = 0;
+            }
+            if (Voice.Source) {
+                try { Voice.Source.stop(0); } catch (_) {}
+                try { Voice.Source.disconnect(); } catch (_) {}
+            }
+            if (Voice.Oscs) {
+                var Oi;
+                for (Oi = 0; Oi < Voice.Oscs.length; Oi++) {
+                    try { Voice.Oscs[Oi].stop(0); } catch (_) {}
+                    try { Voice.Oscs[Oi].disconnect(); } catch (_) {}
+                }
+            }
+            Def = Voice.Plugin && PluginRegistry[Voice.Plugin.Id];
+            if (Def && Def.NoteOff) {
+                try { Def.NoteOff(Engine, Voice); } catch (_) {}
+            }
+        } catch (_) {}
+    }
+    State.ActiveVoices = {};
+    State.MouseHolds = {};
+    State.KeyHolds = {};
+    State.HeldKeys = {};
+    State.RecordArm = {};
+    Engine.Stop();
+}
+
 function FinishRecordingSession() {
     State.Recording = false;
-    ReleaseAllHolds();
-    Engine.Stop();
+    HardStopAllVoices();
     State.Simulation.Playing = false;
     State.Simulation.Time = 0;
     Engine.StartSongTime = 0;
@@ -520,7 +708,13 @@ function CollectSteps() {
     for (ChannelIndex = 0; ChannelIndex < State.Channels.length; ChannelIndex++) {
         Channel = State.Channels[ChannelIndex];
         if (Channel.Muted) continue;
-        if (!Channel.Pattern) continue;
+        Channel.Pattern = NormalizePattern(Channel.Pattern);
+        var HasStep = false;
+        var Si;
+        for (Si = 0; Si < 16; Si++) {
+            if (Channel.Pattern[Si]) { HasStep = true; break; }
+        }
+        if (!HasStep) continue;
 
         Buffer = Engine.Buffers.get(Channel.SampleUrl);
         Rate = 1;
@@ -641,9 +835,10 @@ function ScheduleRecordedNotes(SongTimeSeconds) {
         When = Now + (StartSec - SongTimeSeconds);
         if (When < Now) When = Now;
 
-        (function (Ch, NoteObj, DelayMs, PrevMidi) {
+        (function (Ch, NoteObj, DelayMs, PrevMidi, Gen) {
             setTimeout(function () {
                 if (!State.Simulation.Playing) return;
+                if (Gen !== State.TransportGeneration) return;
                 var Pl = GetChannelPlugin(Ch);
                 if (!Pl) return;
                 var D = PluginRegistry[Pl.Id] || PluginRegistry.sampler;
@@ -655,6 +850,14 @@ function ScheduleRecordedNotes(SongTimeSeconds) {
 
                 if (V) {
                     setTimeout(function () {
+                        if (Gen !== State.TransportGeneration) {
+                            try {
+                                if (V.Gain) V.Gain.gain.value = 0;
+                                if (V.Source) V.Source.stop(0);
+                                if (V.Oscs) V.Oscs.forEach(function (O) { try { O.stop(0); } catch (_) {} });
+                            } catch (_) {}
+                            return;
+                        }
                         D.NoteOff(Engine, V);
                     }, Math.max(30, Engine.BeatsToSeconds(NoteObj.DurationBeats || 0.25) * 1000));
                 }
@@ -663,7 +866,8 @@ function ScheduleRecordedNotes(SongTimeSeconds) {
             Item.Channel,
             Item.NoteObj,
             (When - Now) * 1000,
-            Item.PrevMidi
+            Item.PrevMidi,
+            State.TransportGeneration
         );
     }
 }
@@ -1379,6 +1583,30 @@ function StartTimelineScrub(Event, FromRuler) {
     window.addEventListener("mouseup", OnUp);
 }
 
+function BindTimelineWheelScroll() {
+    var Body = document.querySelector("#PlaylistBody");
+    var RulerParent = RulerCanvas && RulerCanvas.parentElement;
+    function OnWheel(Event) {
+        // Vertical wheel -> horizontal timeline scroll (DAW style)
+        var Dx = Event.deltaX;
+        var Dy = Event.deltaY;
+        if (Event.shiftKey || Math.abs(Dx) > Math.abs(Dy)) {
+            // native-ish horizontal
+            var Amount = Math.abs(Dx) > Math.abs(Dy) ? Dx : Dy;
+            Body.scrollLeft += Amount;
+            Event.preventDefault();
+        } else if (Math.abs(Dy) > 0) {
+            Body.scrollLeft += Dy;
+            Event.preventDefault();
+        }
+        if (RulerParent) RulerParent.scrollLeft = Body.scrollLeft;
+        DrawRuler();
+    }
+    if (Body) Body.addEventListener("wheel", OnWheel, { passive: false });
+    if (TimelineCanvas) TimelineCanvas.addEventListener("wheel", OnWheel, { passive: false });
+    if (RulerCanvas) RulerCanvas.addEventListener("wheel", OnWheel, { passive: false });
+}
+
 function BindTimelineEvents() {
     TimelineCanvas.addEventListener("mousedown", function (Event) {
         if (Event.button !== 0) return;
@@ -1677,9 +1905,7 @@ function FinishChannelDrag(Event) {
 
 
 function RenderStepGrid(Container, Channel) {
-    if (!Channel.Pattern) {
-        Channel.Pattern = [false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false];
-    }
+    Channel.Pattern = NormalizePattern(Channel.Pattern);
     Container.innerHTML = "";
     var Step;
     var Cell;
@@ -1697,8 +1923,9 @@ function BindStepCell(Cell, Channel, Step) {
     Cell.addEventListener("mousedown", function (Event) {
         Event.preventDefault();
         Event.stopPropagation();
+        Channel.Pattern = NormalizePattern(Channel.Pattern);
         Channel.Pattern[Step] = !Channel.Pattern[Step];
-        Cell.classList.toggle("On", Channel.Pattern[Step]);
+        Cell.classList.toggle("On", !!Channel.Pattern[Step]);
         if (Channel.Pattern[Step] && Engine.Buffers.has(Channel.SampleUrl)) {
             Engine.PlayOneShot(Channel.SampleUrl, Channel.Gain, 1);
         }
@@ -1727,19 +1954,48 @@ function BuildPianoKeys() {
     var Pattern = [0, 1, 0, 1, 0, 0, 1, 0, 1, 0, 1, 0];
     var Names = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
     var Start = State.PianoOctave * 12;
+    var Total = 24;
     var Index;
     var Note;
     var Key;
     var IsBlack;
+    var WhiteCount = 0;
+    var WhiteIndexByNote = {};
+    var Whites = document.createElement("div");
+    Whites.className = "PianoWhites";
+    Host.appendChild(Whites);
 
-    for (Index = 0; Index < 24; Index++) {
+    for (Index = 0; Index < Total; Index++) {
         Note = Start + Index;
         IsBlack = Pattern[Index % 12] === 1;
+        if (IsBlack) continue;
+        WhiteIndexByNote[Note] = WhiteCount;
         Key = document.createElement("button");
         Key.type = "button";
-        Key.className = "PianoKey" + (IsBlack ? " Black" : " White");
+        Key.className = "PianoKey White";
         Key.setAttribute("data-note", String(Note));
         Key.textContent = Names[Index % 12] + String(Math.floor(Note / 12));
+        BindPianoKey(Key, Note);
+        Whites.appendChild(Key);
+        WhiteCount++;
+    }
+
+    for (Index = 0; Index < Total; Index++) {
+        Note = Start + Index;
+        IsBlack = Pattern[Index % 12] === 1;
+        if (!IsBlack) continue;
+        // Center between previous and next white keys
+        var PrevWhite = Note - 1;
+        while (PrevWhite >= Start && Pattern[(PrevWhite - Start) % 12] === 1) PrevWhite--;
+        var WIdx = WhiteIndexByNote[PrevWhite];
+        if (WIdx == null) continue;
+        Key = document.createElement("button");
+        Key.type = "button";
+        Key.className = "PianoKey Black";
+        Key.setAttribute("data-note", String(Note));
+        Key.textContent = Names[Index % 12];
+        // left edge of black key sits on boundary between PrevWhite and next white
+        Key.style.left = ((WIdx + 1) / WhiteCount * 100) + "%";
         BindPianoKey(Key, Note);
         Host.appendChild(Key);
     }
@@ -2196,6 +2452,23 @@ function AddPluginChannel(PluginId) {
 }
 
 
+
+function SetDockToggleIcon(Btn, Collapsed) {
+    if (!Btn) return;
+    var Img = Btn.querySelector("img");
+    var ExpandSrc = Btn.getAttribute("data-expand-src") || "Assets/Images/DockExpand.svg";
+    var MinimizeSrc = Btn.getAttribute("data-minimize-src") || "Assets/Images/DockMinimize.svg";
+    var Src = Collapsed ? ExpandSrc : MinimizeSrc;
+    if (Img) {
+        Img.src = Src;
+        Img.alt = Collapsed ? "Expand" : "Minimize";
+    } else {
+        Btn.innerHTML = '<img src="' + Src + '" alt="' + (Collapsed ? "Expand" : "Minimize") + '">';
+        Btn.classList.add("IconImageBtn");
+    }
+    Btn.title = Collapsed ? "Expand" : "Collapse";
+}
+
 function BindDockCollapse() {
     var Left = document.querySelector("#DockLeft");
     var Right = document.querySelector("#DockRight");
@@ -2203,13 +2476,31 @@ function BindDockCollapse() {
     var ToggleRight = document.querySelector("#ToggleRightDock");
     var TogglePiano = document.querySelector("#TogglePianoDock");
 
+    function ReadDockWidthPx(Dock, Fallback) {
+        var W = Dock.offsetWidth || 0;
+        if (!W || Dock.classList.contains("Collapsed")) {
+            var Cs = window.getComputedStyle(Dock);
+            W = parseInt(Cs.width, 10) || Fallback;
+        }
+        return Math.max(120, Math.min(480, W || Fallback));
+    }
+
+    function FormatWidth(Px) {
+        var N = parseInt(Px, 10);
+        if (!isFinite(N) || N <= 40) N = 240;
+        return N + "px";
+    }
+
     function ApplyCollapsed(Dock, Collapsed, Side) {
         if (!Dock) return;
         if (Collapsed) {
             if (Side === "left" || Side === "right") {
-                try {
-                    localStorage.setItem(Side === "left" ? "OsDockLeft" : "OsDockRight", String(Dock.offsetWidth || 240));
-                } catch (_) {}
+                if (!Dock.classList.contains("Collapsed")) {
+                    var Saved = ReadDockWidthPx(Dock, Side === "left" ? 200 : 240);
+                    try {
+                        localStorage.setItem(Side === "left" ? "OsDockLeft" : "OsDockRight", String(Saved));
+                    } catch (_) {}
+                }
             }
             Dock.classList.add("Collapsed");
             if (Side === "left" || Side === "right") {
@@ -2220,16 +2511,20 @@ function BindDockCollapse() {
         } else {
             Dock.classList.remove("Collapsed");
             if (Side === "left") {
-                Dock.style.width = localStorage.getItem("OsDockLeft") || "240px";
+                var Lw = FormatWidth(localStorage.getItem("OsDockLeft") || "200");
+                Dock.style.width = Lw;
                 Dock.style.minWidth = "";
                 Dock.style.maxWidth = "";
             }
             if (Side === "right") {
-                Dock.style.width = localStorage.getItem("OsDockRight") || "260px";
+                var Rw = FormatWidth(localStorage.getItem("OsDockRight") || "240");
+                Dock.style.width = Rw;
                 Dock.style.minWidth = "";
                 Dock.style.maxWidth = "";
             }
         }
+        if (Side === "left") SetDockToggleIcon(ToggleLeft, Collapsed);
+        if (Side === "right") SetDockToggleIcon(ToggleRight, Collapsed);
         ResizeCanvases();
         BuildPianoKeys();
     }
@@ -2256,16 +2551,27 @@ function BindDockCollapse() {
         TogglePiano.addEventListener("click", function () {
             var Dock = document.querySelector("#PianoDock");
             if (!Dock) return;
-            var Collapsed = Dock.classList.toggle("Collapsed");
-            if (Collapsed) {
+            var WillCollapse = !Dock.classList.contains("Collapsed");
+            if (WillCollapse) {
+                var H = Dock.offsetHeight || 140;
+                if (H > 40) {
+                    try { localStorage.setItem("OsPianoH", String(H)); } catch (_) {}
+                }
+                Dock.classList.add("Collapsed");
                 document.documentElement.style.setProperty("--PianoH", "32px");
+                Dock.style.height = "32px";
             } else {
-                var Ph = localStorage.getItem("OsPianoH") || "140";
+                Dock.classList.remove("Collapsed");
+                var Ph = parseInt(localStorage.getItem("OsPianoH") || "140", 10);
+                if (!isFinite(Ph) || Ph < 90) Ph = 140;
                 document.documentElement.style.setProperty("--PianoH", Ph + "px");
+                Dock.style.height = Ph + "px";
             }
+            SetDockToggleIcon(TogglePiano, WillCollapse);
             ResizeCanvases();
             BuildPianoKeys();
         });
+        SetDockToggleIcon(TogglePiano, !!(document.querySelector("#PianoDock") && document.querySelector("#PianoDock").classList.contains("Collapsed")));
     }
 }
 
@@ -2278,21 +2584,35 @@ function BindPianoResize() {
     var StartY = 0;
     var StartH = 0;
 
+    function ApplyPianoHeight(Next) {
+        Next = Math.min(360, Math.max(90, Next));
+        document.documentElement.style.setProperty("--PianoH", Next + "px");
+        Dock.style.height = Next + "px";
+        Dock.classList.remove("Collapsed");
+        ResizeCanvases();
+        BuildPianoKeys();
+        return Next;
+    }
+
+    try {
+        var SavedH = Number(localStorage.getItem("OsPianoH"));
+        if (SavedH && isFinite(SavedH)) ApplyPianoHeight(SavedH);
+    } catch (_) {}
+
     Handle.addEventListener("mousedown", function (Event) {
         Event.preventDefault();
+        Event.stopPropagation();
         Dragging = true;
         StartY = Event.clientY;
-        StartH = Dock.offsetHeight;
+        StartH = Dock.offsetHeight || 140;
         Dock.classList.add("Resizing");
+        Dock.classList.remove("Collapsed");
     });
 
     window.addEventListener("mousemove", function (Event) {
         if (!Dragging) return;
         var Dy = StartY - Event.clientY;
-        var Next = Math.min(320, Math.max(100, StartH + Dy));
-        document.documentElement.style.setProperty("--PianoH", Next + "px");
-        ResizeCanvases();
-        BuildPianoKeys();
+        ApplyPianoHeight(StartH + Dy);
     });
 
     window.addEventListener("mouseup", function () {
@@ -2300,12 +2620,32 @@ function BindPianoResize() {
         Dragging = false;
         Dock.classList.remove("Resizing");
         try {
-            localStorage.setItem("OsPianoH", String(Dock.offsetHeight));
+            localStorage.setItem("OsPianoH", String(Dock.offsetHeight || 140));
         } catch (_) {}
     });
 }
 
 function BindPianoToolbar() {
+    var SynthBtn = document.querySelector("#PianoSynthMenuBtn");
+    var SynthPanel = document.querySelector("#PianoSynthPanel");
+    if (SynthBtn && SynthPanel) {
+        SynthBtn.addEventListener("click", function (Event) {
+            Event.preventDefault();
+            Event.stopPropagation();
+            var Open = SynthPanel.style.display === "none" || !SynthPanel.style.display;
+            SynthPanel.style.display = Open ? "flex" : "none";
+            SynthBtn.classList.toggle("Active", Open);
+        });
+        SynthPanel.addEventListener("click", function (Event) {
+            Event.stopPropagation();
+        });
+        document.addEventListener("click", function (Event) {
+            if (Event.target.closest && Event.target.closest("#PianoSynthMenuWrap")) return;
+            SynthPanel.style.display = "none";
+            SynthBtn.classList.remove("Active");
+        });
+    }
+
     var Oct = document.querySelector("#PianoOctave");
     if (Oct) {
         Oct.addEventListener("change", function () {
@@ -2322,12 +2662,28 @@ function BindPianoToolbar() {
         });
     }
 
+    var EditNotesBtn = document.querySelector("#OpenPianoRollBtn");
+    if (EditNotesBtn) {
+        EditNotesBtn.addEventListener("click", function (Event) {
+            Event.preventDefault();
+            Event.stopPropagation();
+            var Ch = GetSelectedChannel();
+            if (!Ch) {
+                ShowNotice("Select a channel first.");
+                return;
+            }
+            OpenPianoRoll(Ch.Id);
+        });
+    }
+
     var ClearNotesBtn = document.querySelector("#ClearNotesBtn");
     if (ClearNotesBtn) {
         ClearNotesBtn.addEventListener("click", function () {
             var Channel = GetSelectedChannel();
             if (Channel) {
                 Channel.Notes = [];
+                DrawTimeline();
+                if (State.PianoRoll && State.PianoRoll.Open) DrawPianoRoll();
             }
         });
     }
@@ -2346,6 +2702,29 @@ function BindPianoToolbar() {
     }
 }
 
+
+function NormalizePattern(Raw) {
+    var Out = [];
+    var Index;
+    var Value;
+    if (Array.isArray(Raw)) {
+        for (Index = 0; Index < 16; Index++) {
+            Value = Raw[Index];
+            Out.push(Value === true || Value === 1 || Value === "1" || Value === "true");
+        }
+        return Out;
+    }
+    if (Raw && typeof Raw === "object") {
+        for (Index = 0; Index < 16; Index++) {
+            Value = Raw[Index] != null ? Raw[Index] : Raw[String(Index)];
+            Out.push(Value === true || Value === 1 || Value === "1" || Value === "true");
+        }
+        return Out;
+    }
+    for (Index = 0; Index < 16; Index++) Out.push(false);
+    return Out;
+}
+
 function SerializeProject() {
     var Channels = [];
     var Index;
@@ -2360,7 +2739,7 @@ function SerializeProject() {
             Color: Channel.Color,
             Muted: !!Channel.Muted,
             Clips: Channel.Clips || [],
-            Pattern: Channel.Pattern || [],
+            Pattern: NormalizePattern(Channel.Pattern).map(function (V) { return V ? 1 : 0; }),
             Notes: Channel.Notes || [],
             PluginId: Channel.Plugin ? Channel.Plugin.Id : "sampler",
             Plugin: Channel.Plugin || null,
@@ -2400,8 +2779,8 @@ function UpdatePublishLabel() {
         Btn.textContent = "Save";
         Btn.title = "Save project to cloud";
     } else {
-        Btn.textContent = "Publish";
-        Btn.title = "Publish project to cloud";
+        Btn.textContent = "Save";
+        Btn.title = "Save project to cloud";
     }
 }
 
@@ -2431,9 +2810,24 @@ function NewEmptyProject() {
     }, 1500);
 }
 
+function UniqueProjectName(BaseName) {
+    var Name = (BaseName || "Untitled Project").trim() || "Untitled Project";
+    var Existing = {};
+    var Index;
+    var Project;
+    for (Index = 0; Index < (State.Projects || []).length; Index++) {
+        Project = State.Projects[Index];
+        if (Project && Project.Name) Existing[String(Project.Name)] = true;
+    }
+    if (!Existing[Name]) return Name;
+    var Suffix = 2;
+    while (Existing[Name + " - " + Suffix]) Suffix++;
+    return Name + " - " + Suffix;
+}
+
 function PublishProject() {
     if (!State.User) {
-        alert("Sign in to save a project.");
+        ShowNotice("Sign in to save a project.");
         ShowModal("SignInModal");
         return;
     }
@@ -2457,7 +2851,47 @@ function PublishProject() {
     }).catch(function (Error) {
         console.error(Error);
         if (Status) Status.textContent = "Save failed";
-        alert(Error.message || "Save failed");
+        ShowNotice(Error.message || "Save failed");
+    });
+}
+
+function SaveProjectAs() {
+    if (!State.User) {
+        ShowNotice("Sign in to save a project.");
+        ShowModal("SignInModal");
+        return;
+    }
+
+    var Username = State.User.Username || State.User.DisplayName;
+    var NameEl = document.querySelector("#ProjectName");
+    var BaseName = NameEl ? NameEl.value : "Untitled Project";
+    var NewName = UniqueProjectName(BaseName);
+    if (NameEl) NameEl.value = NewName;
+
+    State.ProjectId = null;
+    UpdatePublishLabel();
+
+    var Status = document.querySelector("#PublishStatus");
+    if (Status) Status.textContent = "Saving as...";
+
+    UploadLocalMicTakes(Username).then(function () {
+        var Payload = SerializeProject();
+        Payload.Id = null;
+        Payload.Author = Username;
+        Payload.Name = NewName;
+        return SaveProject(Payload, { CurrentUser: Username });
+    }).then(function (Result) {
+        State.ProjectId = Result.Id;
+        if (Status) Status.textContent = "Saved as " + NewName;
+        setTimeout(function () {
+            if (Status) Status.textContent = "";
+        }, 2500);
+        UpdatePublishLabel();
+        RefreshBrowser();
+    }).catch(function (Error) {
+        console.error(Error);
+        if (Status) Status.textContent = "Save As failed";
+        ShowNotice(Error.message || "Save As failed");
     });
 }
 
@@ -2541,7 +2975,7 @@ function ApplyLoadedProject(Doc) {
             Color: Raw.Color || Colors[Index % Colors.length],
             Muted: !!Raw.Muted,
             Clips: Array.isArray(Raw.Clips) ? Raw.Clips : [],
-            Pattern: Array.isArray(Raw.Pattern) ? Raw.Pattern : new Array(16).fill(0),
+            Pattern: NormalizePattern(Raw.Pattern),
             Notes: Array.isArray(Raw.Notes) ? Raw.Notes : [],
             Plugin: Plugin,
             StretchToClip: !!Raw.StretchToClip,
@@ -2596,7 +3030,7 @@ function ToggleMicRecord() {
             if (Btn) Btn.classList.remove("Active");
             State.MicStartBeat = null;
             if (!Result || !Result.Buffer) {
-                alert("Could not capture microphone audio.");
+                ShowNotice("Could not capture microphone audio.");
                 return;
             }
             var Buffer = Result.Buffer;
@@ -2648,7 +3082,7 @@ function ToggleMicRecord() {
         console.error(Error);
         State.MicStartBeat = null;
         if (Btn) Btn.classList.remove("Active");
-        alert("Microphone permission failed: " + (Error.message || Error));
+        ShowNotice("Microphone permission failed: " + (Error.message || Error));
     });
 }
 
@@ -2805,21 +3239,23 @@ function DrawEventGraph() {
     }
     Ctx.stroke();
 
+    var Hover = (State.PianoRoll && State.PianoRoll.GraphHoverIndex != null) ? State.PianoRoll.GraphHoverIndex : -1;
     for (Index = 0; Index < Points.length; Index++) {
         var Px = Points[Index].t * W;
         var Py = (1 - Points[Index].v) * (H - 8) + 4;
-        Ctx.fillStyle = "#ffe0a0";
+        var IsHover = Index === Hover || (State.PianoRoll && State.PianoRoll.GraphDrag && State.PianoRoll.GraphDrag.Index === Index);
+        Ctx.fillStyle = IsHover ? "#ffffff" : "#ffe0a0";
         Ctx.beginPath();
-        Ctx.arc(Px, Py, 5, 0, Math.PI * 2);
+        Ctx.arc(Px, Py, IsHover ? 7 : 5, 0, Math.PI * 2);
         Ctx.fill();
-        Ctx.strokeStyle = "#000";
-        Ctx.lineWidth = 1;
+        Ctx.strokeStyle = IsHover ? "#ff6a00" : "#000";
+        Ctx.lineWidth = IsHover ? 2 : 1;
         Ctx.stroke();
     }
 
     Ctx.fillStyle = "#888";
     Ctx.font = "10px Cascadia Mono, monospace";
-    Ctx.fillText(Param, 6, 12);
+    Ctx.fillText(Param + (Hover >= 0 ? " · point " + (Hover + 1) : " · click add"), 6, 12);
 }
 
 function BindEventGraph() {
@@ -2864,11 +3300,54 @@ function BindEventGraph() {
 
     if (!Canvas) return;
 
+    function HitTestPoint(ClientX, ClientY) {
+        var Channel = GetPianoRollChannel();
+        if (!Channel || !State.SelectedNote) return -1;
+        var N = Channel.Notes[State.SelectedNote.Index];
+        if (!N) return -1;
+        EnsureNoteEvents(N);
+        var Param = (State.PianoRoll && State.PianoRoll.EventGraphParam) || "Cutoff";
+        if (!N.Events[Param]) return -1;
+        var Points = N.Events[Param];
+        var Rect = Canvas.getBoundingClientRect();
+        var X = ClientX - Rect.left;
+        var Y = ClientY - Rect.top;
+        var W = Math.max(1, Rect.width);
+        var H = Math.max(1, Rect.height);
+        var Index;
+        for (Index = 0; Index < Points.length; Index++) {
+            var Px = Points[Index].t * W;
+            var Py = (1 - Points[Index].v) * (H - 8) + 4;
+            if (Math.hypot(Px - X, Py - Y) < 12) return Index;
+        }
+        return -1;
+    }
+
     Canvas.oncontextmenu = function (Event) {
         Event.preventDefault();
     };
 
+    Canvas.addEventListener("mousemove", function (Event) {
+        if (State.PianoRoll && State.PianoRoll.GraphDrag) {
+            Canvas.style.cursor = "grabbing";
+            return;
+        }
+        var Hit = HitTestPoint(Event.clientX, Event.clientY);
+        if (State.PianoRoll) State.PianoRoll.GraphHoverIndex = Hit;
+        Canvas.style.cursor = Hit >= 0 ? "grab" : "crosshair";
+        if (Hit >= 0) Canvas.title = "Drag point · Right-click delete";
+        else Canvas.title = "Click to add automation point";
+        DrawEventGraph();
+    });
+
+    Canvas.addEventListener("mouseleave", function () {
+        if (State.PianoRoll) State.PianoRoll.GraphHoverIndex = -1;
+        Canvas.style.cursor = "crosshair";
+        DrawEventGraph();
+    });
+
     Canvas.onmousedown = function (Event) {
+
         Event.preventDefault();
         Event.stopPropagation();
         var Channel = GetPianoRollChannel();
@@ -3005,7 +3484,7 @@ function OpenPianoRoll(ChannelId) {
     }
     if (!Channel) Channel = GetSelectedChannel();
     if (!Channel) {
-        alert("Select a channel first.");
+        ShowNotice("Select a channel first.");
         return;
     }
 
@@ -3243,7 +3722,7 @@ function BindPianoRoll() {
             Event.stopPropagation();
             var Ch = GetSelectedChannel();
             if (!Ch) {
-                alert("Select a channel first.");
+                ShowNotice("Select a channel first.");
                 return;
             }
             OpenPianoRoll(Ch.Id);
@@ -3258,9 +3737,10 @@ function BindPianoRoll() {
         };
     }
 
+    // Do not close piano roll on backdrop click - too accidental
     if (Modal) {
         Modal.onclick = function (Event) {
-            if (Event.target === Modal) ClosePianoRoll();
+            Event.stopPropagation();
         };
     }
 
@@ -3489,13 +3969,12 @@ function BindEffects() {
     if (MasterEl) {
         MasterEl.addEventListener("input", function () {
             Engine.EnsureCtx();
+            var V = Math.max(0, Math.min(1.2, Number(MasterEl.value) / 100));
             if (Engine.Master) {
-                Engine.Master.gain.setTargetAtTime(
-                    Math.max(0, Math.min(1.2, Number(MasterEl.value) / 100)),
-                    Engine.Ctx.currentTime,
-                    0.02
-                );
+                Engine.Master.gain.setTargetAtTime(V, Engine.Ctx.currentTime, 0.02);
             }
+            var PlayVol = document.querySelector("#PlaybackVolume");
+            if (PlayVol) PlayVol.value = String(Math.round(Math.min(100, V * 100)));
         });
     }
 }
@@ -3567,7 +4046,7 @@ function RenderChannels() {
             '</div>' +
             '<button class="StretchBtn' + (Channel.StretchToClip ? ' Active' : '') + '" title="Stretch to clip length">S</button>' +
             '<button class="MuteBtn' + (Channel.Muted ? ' Active' : '') + '" title="Mute">M</button>' +
-            '<button class="SaveSampleBtn" title="Save channel as sample">S+</button>' +
+            '<button class="IconBtn IconImageBtn SaveSampleBtn" title="Save channel as sample"><img src="Assets/Images/DockExpand.svg" alt="Save sample"></button>' +
             '<button class="RemoveChannelBtn" title="Remove">x</button>';
         BindChannelRow(Row, Channel);
         RenderStepGrid(Row.querySelector(".StepGrid"), Channel);
@@ -3714,16 +4193,35 @@ function RenderProjectList() {
             '</span>' +
             '</div>' +
             '<div class="SampleActions">' +
-            '<button type="button" class="IconBtn OpenProjectBtn" title="Open project">Open</button>' +
+            (IsMine ? '<button type="button" class="IconBtn IconImageBtn RenameProjectBtn" title="Rename project"><img src="Assets/Images/Rename.svg" alt="Rename"></button>' : "") +
             (IsMine ? '<button type="button" class="IconBtn DeleteProjectBtn" title="Delete project">x</button>' : "") +
             '</div>';
+        Item.title = "Double-click to open";
         (function (Doc, Mine) {
-            var Btn = Item.querySelector(".OpenProjectBtn");
-            if (Btn) {
-                Btn.addEventListener("click", function (Event) {
+            var Ren = Item.querySelector(".RenameProjectBtn");
+            if (Ren && Mine) {
+                Ren.addEventListener("click", function (Event) {
                     Event.preventDefault();
                     Event.stopPropagation();
-                    OpenProjectFromBrowser(Doc);
+                    ShowPromptModal({
+                        Title: "Rename Project",
+                        Label: "Project name",
+                        Value: Doc.Name || "Untitled Project",
+                        OnConfirm: function (Raw) {
+                            var NextName = String(Raw || "").trim();
+                            if (!NextName) return;
+                            var Username = State.User ? (State.User.Username || State.User.DisplayName) : "";
+                            RenameProject(Doc.Id, NextName, Username).then(function () {
+                                if (State.ProjectId === Doc.Id) {
+                                    var NameEl = document.querySelector("#ProjectName");
+                                    if (NameEl) NameEl.value = NextName;
+                                }
+                                RefreshBrowser();
+                            }).catch(function (Err) {
+                                ShowNotice(Err.message || "Rename failed");
+                            });
+                        }
+                    });
                 });
             }
             var Del = Item.querySelector(".DeleteProjectBtn");
@@ -3838,8 +4336,9 @@ function RenderSampleList() {
             '</span>' +
             '</div>' +
             '<div class="SampleActions">' +
-            '<button class="IconBtn PreviewBtn" title="Preview">></button>' +
-            '<button class="IconBtn AddBtn" title="Add To Channel Rack">+</button>' +
+            '<button class="IconBtn IconImageBtn PreviewBtn" title="Preview"><img src="Assets/Images/Play.svg" alt="Preview"></button>' +
+            '<button class="IconBtn IconImageBtn AddBtn" title="Add To Channel Rack"><img src="Assets/Images/DockExpand.svg" alt="Add"></button>' +
+            (IsMine ? '<button class="IconBtn IconImageBtn RenameSampleBtn" title="Rename sample"><img src="Assets/Images/Rename.svg" alt="Rename"></button>' : "") +
             (IsMine ? '<button class="IconBtn DeleteSampleBtn" title="Delete sample">x</button>' : "") +
             '</div>';
         BindSampleItem(Item, Sample);
@@ -3870,9 +4369,36 @@ function BindSampleItem(Item, Sample) {
             DrawWaveform();
         }).catch(function (Error) {
             console.warn("Preview Failed", Error);
-            alert("Could Not Preview: " + Error.message);
+            ShowNotice("Could Not Preview: " + Error.message);
         });
     });
+
+    var RenS = Item.querySelector(".RenameSampleBtn");
+    if (RenS) {
+        RenS.addEventListener("click", function (Event) {
+            Event.preventDefault();
+            Event.stopPropagation();
+            if (!State.User) {
+                ShowNotice("Sign in to rename samples.");
+                return;
+            }
+            ShowPromptModal({
+                Title: "Rename Sample",
+                Label: "Sample name",
+                Value: Sample.Name || "Untitled",
+                OnConfirm: function (Raw) {
+                    var NextName = String(Raw || "").trim();
+                    if (!NextName) return;
+                    var Username = State.User.Username || State.User.DisplayName;
+                    RenameSample(Sample.Id, NextName, Username).then(function () {
+                        RefreshBrowser();
+                    }).catch(function (Err) {
+                        ShowNotice(Err.message || "Rename failed");
+                    });
+                }
+            });
+        });
+    }
 
     var Del = Item.querySelector(".DeleteSampleBtn");
     if (Del) {
@@ -3880,7 +4406,7 @@ function BindSampleItem(Item, Sample) {
             Event.preventDefault();
             Event.stopPropagation();
             if (!State.User) {
-                alert("Sign in to delete samples.");
+                ShowNotice("Sign in to delete samples.");
                 return;
             }
             ShowConfirmModal(
@@ -3890,7 +4416,7 @@ function BindSampleItem(Item, Sample) {
                     DeleteSample(Sample.Id, Username).then(function () {
                         RefreshBrowser();
                     }).catch(function (Err) {
-                        alert(Err.message || "Delete failed");
+                        ShowNotice(Err.message || "Delete failed");
                     });
                 }
             );
@@ -3947,12 +4473,12 @@ function AudioBufferToWavBlob(Buffer) {
 
 function SaveChannelAsSample(Channel) {
     if (!State.User) {
-        alert("Sign in to save samples.");
+        ShowNotice("Sign in to save samples.");
         ShowModal("SignInModal");
         return;
     }
     if (!Channel || !Channel.SampleUrl) {
-        alert("No sample on this channel.");
+        ShowNotice("No sample on this channel.");
         return;
     }
     var Username = State.User.Username || State.User.DisplayName || "user";
@@ -3985,7 +4511,7 @@ function SaveChannelAsSample(Channel) {
                 Status.textContent = "Save failed";
                 Status.className = "UploadStatus Err";
             }
-            alert(Err.message || "Save failed");
+            ShowNotice(Err.message || "Save failed");
         });
         return;
     }
@@ -3997,7 +4523,7 @@ function SaveChannelAsSample(Channel) {
                 Status.textContent = "Save failed";
                 Status.className = "UploadStatus Err";
             }
-            alert(Err.message || "Save failed");
+            ShowNotice(Err.message || "Save failed");
         });
         return;
     }
@@ -4010,12 +4536,12 @@ function SaveChannelAsSample(Channel) {
                 Status.textContent = "Save failed";
                 Status.className = "UploadStatus Err";
             }
-            alert(Err.message || "Save failed");
+            ShowNotice(Err.message || "Save failed");
         });
         return;
     }
 
-    alert("Could not resolve channel audio for upload.");
+    ShowNotice("Could not resolve channel audio for upload.");
 }
 
 function BindBrowser() {
@@ -4038,7 +4564,7 @@ function HandleUpload(Event) {
     if (!File) return;
 
     if (!State.User) {
-        alert("Sign In To Upload Samples.");
+        ShowNotice("Sign In To Upload Samples.");
         ShowModal("SignInModal");
         return;
     }
@@ -4376,34 +4902,70 @@ RegisterTooltipRenderer("meter", function (Ctx, W, H) {
 });
 
 
+function BindPlaybackVolume() {
+    var El = document.querySelector("#PlaybackVolume");
+    if (!El) return;
+
+    function Apply() {
+        var V = Math.max(0, Math.min(1, Number(El.value) / 100));
+        Engine.EnsureCtx();
+        if (Engine.Master) {
+            Engine.Master.gain.setTargetAtTime(V, Engine.Ctx.currentTime, 0.02);
+        }
+        // keep Effects master slider in sync if present
+        var FxMaster = document.querySelector("#FxMaster");
+        if (FxMaster) FxMaster.value = String(Math.round(V * 100));
+    }
+
+    El.addEventListener("input", Apply);
+    // default quieter than max
+    if (El.value === "" || El.value == null) El.value = "70";
+    Apply();
+}
+
 function BindMetronomeUi() {
     var MetroBtn = document.querySelector("#MetronomeBtn");
     var VolEl = document.querySelector("#MetronomeVolume");
     var CountBtn = document.querySelector("#CountInBtn");
+    var BeatsEl = document.querySelector("#CountInBeats");
 
     function SyncMetroUi() {
         if (MetroBtn) MetroBtn.classList.toggle("Active", !!Engine.MetronomeEnabled);
         if (CountBtn) CountBtn.classList.toggle("Active", !!Engine.PreRollEnabled);
+        if (BeatsEl) BeatsEl.value = String(Engine.PreRollBeats || 4);
     }
 
     if (MetroBtn) {
         MetroBtn.addEventListener("click", function () {
-            Engine.MetronomeEnabled = !Engine.MetronomeEnabled;
+            Engine.SetMetronomeEnabled(!Engine.MetronomeEnabled);
             SyncMetroUi();
-            if (State.Simulation.Playing) RescheduleTransport();
+            // Mute/unmute live via bus - do not reschedule stacked clicks when turning off
+            if (Engine.MetronomeEnabled && State.Simulation.Playing) {
+                Engine.ScheduleMetronome(Engine.GetSongTime(), State.TotalBeats);
+            }
         });
     }
     if (VolEl) {
         VolEl.addEventListener("input", function () {
-            Engine.MetronomeVolume = Math.max(0, Math.min(1, Number(VolEl.value) / 100));
+            Engine.SetMetronomeVolume(Number(VolEl.value) / 100);
         });
-        Engine.MetronomeVolume = Math.max(0, Math.min(1, Number(VolEl.value) / 100));
+        Engine.SetMetronomeVolume(Number(VolEl.value) / 100);
     }
     if (CountBtn) {
         CountBtn.addEventListener("click", function () {
             Engine.PreRollEnabled = !Engine.PreRollEnabled;
             SyncMetroUi();
         });
+    }
+    if (BeatsEl) {
+        function ApplyBeats() {
+            var N = Math.max(1, Math.min(32, Number(BeatsEl.value) || 4));
+            BeatsEl.value = String(N);
+            Engine.PreRollBeats = N;
+        }
+        BeatsEl.addEventListener("change", ApplyBeats);
+        BeatsEl.addEventListener("blur", ApplyBeats);
+        ApplyBeats();
     }
     SyncMetroUi();
 }
@@ -4413,21 +4975,36 @@ function BindMenuBar() {
     var Index;
     for (Index = 0; Index < Items.length; Index++) {
         (function (Item) {
-            Item.addEventListener("click", function (Event) {
-                Event.stopPropagation();
-                var WasOpen = Item.classList.contains("Open");
-                var All = document.querySelectorAll(".MenuItem.Open");
-                var J;
-                for (J = 0; J < All.length; J++) All[J].classList.remove("Open");
-                if (!WasOpen) Item.classList.add("Open");
-            });
+            var Label = Item.querySelector(".MenuLabel");
+            if (Label) {
+                Label.addEventListener("click", function (Event) {
+                    Event.preventDefault();
+                    Event.stopPropagation();
+                    var WasOpen = Item.classList.contains("Open");
+                    var All = document.querySelectorAll(".MenuItem.Open");
+                    var J;
+                    for (J = 0; J < All.length; J++) All[J].classList.remove("Open");
+                    if (!WasOpen) Item.classList.add("Open");
+                });
+            }
         })(Items[Index]);
     }
-    document.addEventListener("click", function () {
+    document.addEventListener("click", function (Event) {
+        if (Event.target && Event.target.closest && Event.target.closest("#EffectsPanel")) return;
         var All = document.querySelectorAll(".MenuItem.Open");
         var J;
         for (J = 0; J < All.length; J++) All[J].classList.remove("Open");
     });
+
+    var EffectsPanel = document.querySelector("#EffectsPanel");
+    if (EffectsPanel) {
+        EffectsPanel.addEventListener("click", function (Event) {
+            Event.stopPropagation();
+        });
+        EffectsPanel.addEventListener("mousedown", function (Event) {
+            Event.stopPropagation();
+        });
+    }
 
     function BindMenuClick(Id, Fn) {
         var El = document.querySelector("#" + Id);
@@ -4443,6 +5020,7 @@ function BindMenuBar() {
 
     BindMenuClick("MenuNewProject", NewEmptyProject);
     BindMenuClick("MenuSaveProject", PublishProject);
+    BindMenuClick("MenuSaveAsProject", SaveProjectAs);
     BindMenuClick("MenuPublishProject", function () {
         State.ProjectId = null;
         UpdatePublishLabel();
@@ -4498,26 +5076,32 @@ function Init() {
     BindTransport();
     var Pub = document.querySelector("#PublishBtn");
     if (Pub) Pub.addEventListener("click", PublishProject);
+    var SaveAsBtn = document.querySelector("#SaveAsBtn");
+    if (SaveAsBtn) SaveAsBtn.addEventListener("click", SaveProjectAs);
     var Mic = document.querySelector("#MicButton");
     if (Mic) Mic.addEventListener("click", ToggleMicRecord);
 
     BindTimelineEvents();
+    BindTimelineWheelScroll();
     BindBrowser();
     BindDocks();
     BindDockCollapse();
     BindMetronomeUi();
+    BindPlaybackVolume();
     BindMenuBar();
     BindKeyboard();
     BindOctaveWheel();
     BindEffects();
     BindPluginMenu();
     BindPianoToolbar();
+    BindPianoResize();
     BindPianoPointerUp();
     BindPianoRoll();
     BindNoteInspector();
     BindEventGraph();
     BuildPianoKeys();
     RestoreSession();
+    BindProfileImageChange();
     RenderChannels();
     ResizeCanvases();
     RefreshBrowser();
@@ -4558,13 +5142,6 @@ function Init() {
             Event.preventDefault();
             Event.stopPropagation();
             ClosePianoRoll();
-        });
-    }
-    if (Modal) {
-        Modal.addEventListener("mousedown", function (Event) {
-            if (Event.target === Modal) {
-                ClosePianoRoll();
-            }
         });
     }
     document.addEventListener("keydown", function (Event) {
