@@ -1602,14 +1602,107 @@ function BindKeyboard() {
 }
 
 
+function RebuildPluginMenu() {
+    var Menu = document.querySelector("#PluginMenu");
+    if (!Menu) return;
+    Menu.innerHTML = "";
+    var Order = ["empty", "grand", "epiano", "keys", "bass", "pluck", "synth", "lead", "pad", "organ", "bell", "fm", "noise", "sampler"];
+    var Seen = {};
+    var I;
+    function AddBtn(Id, Label) {
+        if (Seen[Id]) return;
+        Seen[Id] = true;
+        var B = document.createElement("button");
+        B.type = "button";
+        B.setAttribute("data-plugin", Id);
+        B.textContent = Label;
+        Menu.appendChild(B);
+    }
+    AddBtn("empty", "Empty channel (Synth)");
+    for (I = 0; I < Order.length; I++) {
+        if (Order[I] === "empty") continue;
+        if (Order[I] === "sampler") {
+            AddBtn("sampler", "Sampler (pick sample in browser)");
+            continue;
+        }
+        if (PluginRegistry[Order[I]]) AddBtn(Order[I], PluginRegistry[Order[I]].Name || Order[I]);
+    }
+    // custom plugins
+    for (I in PluginRegistry) {
+        if (!PluginRegistry.hasOwnProperty(I) || Seen[I]) continue;
+        AddBtn(I, (PluginRegistry[I].Name || I) + (PluginRegistry[I].Category === "Custom" ? " ★" : ""));
+    }
+    var Creator = document.createElement("button");
+    Creator.type = "button";
+    Creator.setAttribute("data-plugin", "__creator");
+    Creator.textContent = "Plugin Creator…";
+    Creator.className = "PluginCreatorEntry";
+    Menu.appendChild(Creator);
+}
+
+function OpenPluginCreator() {
+    CreateFloatingWidget({
+        Id: "plugin-creator",
+        Title: "Plugin Creator",
+        Width: 340,
+        Height: 420,
+        Build: function (Body) {
+            Body.innerHTML =
+                '<div class="FwPluginRows">' +
+                '<label>Name <input type="text" id="PcName" value="My Synth"></label>' +
+                '<label>Wave <select id="PcWave">' +
+                '<option value="sawtooth">Saw</option>' +
+                '<option value="square">Square</option>' +
+                '<option value="triangle">Triangle</option>' +
+                '<option value="sine">Sine</option>' +
+                '</select></label>' +
+                '<label>Gain <input type="range" id="PcGain" min="5" max="100" value="45"></label>' +
+                '<label>Attack <input type="range" id="PcAtk" min="1" max="100" value="5"></label>' +
+                '<label>Decay <input type="range" id="PcDec" min="1" max="100" value="20"></label>' +
+                '<label>Sustain <input type="range" id="PcSus" min="0" max="100" value="60"></label>' +
+                '<label>Release <input type="range" id="PcRel" min="1" max="100" value="25"></label>' +
+                '<label>Filter <input type="range" id="PcCut" min="5" max="100" value="50"></label>' +
+                '<button type="button" class="Button Primary" id="PcCreate">Create Plugin</button>' +
+                '<button type="button" class="Button" id="PcCreateAdd">Create & Add Channel</button>' +
+                '</div>';
+            function SpecFromForm() {
+                return {
+                    Name: (Body.querySelector("#PcName").value || "My Synth").trim(),
+                    Wave: Body.querySelector("#PcWave").value,
+                    Gain: Number(Body.querySelector("#PcGain").value) / 100,
+                    Attack: Number(Body.querySelector("#PcAtk").value) / 100 * 0.8,
+                    Decay: Number(Body.querySelector("#PcDec").value) / 100 * 0.8,
+                    Sustain: Number(Body.querySelector("#PcSus").value) / 100,
+                    Release: Number(Body.querySelector("#PcRel").value) / 100 * 1.2,
+                    FilterHz: 200 + Math.pow(Number(Body.querySelector("#PcCut").value) / 100, 2) * 16000
+                };
+            }
+            Body.querySelector("#PcCreate").addEventListener("click", function () {
+                var Id = CreateCustomPlugin(SpecFromForm());
+                RebuildPluginMenu();
+                ShowNotice("Plugin created: " + (PluginRegistry[Id].Name || Id), "Plugin Creator");
+            });
+            Body.querySelector("#PcCreateAdd").addEventListener("click", function () {
+                var Id = CreateCustomPlugin(SpecFromForm());
+                RebuildPluginMenu();
+                AddPluginChannel(Id);
+                CloseFloatingWidget("plugin-creator");
+            });
+        }
+    });
+}
+
 function BindPluginMenu() {
     var Menu = document.querySelector("#PluginMenu");
     var AddBtn = document.querySelector("#AddChannelBtn");
     if (!Menu || !AddBtn) return;
 
+    RebuildPluginMenu();
+
     AddBtn.addEventListener("click", function (Event) {
         Event.preventDefault();
         Event.stopPropagation();
+        RebuildPluginMenu();
         var Open = Menu.style.display === "none" || !Menu.style.display;
         Menu.style.display = Open ? "flex" : "none";
     });
@@ -1627,16 +1720,19 @@ function BindPluginMenu() {
         var PluginId = Btn.getAttribute("data-plugin");
         Menu.style.display = "none";
 
-        if (PluginId === "sampler") {
-            BrowserSearch.focus();
+        if (PluginId === "__creator") {
+            OpenPluginCreator();
             return;
         }
-
+        if (PluginId === "sampler") {
+            if (BrowserSearch) BrowserSearch.focus();
+            SetBrowserTab("samples");
+            return;
+        }
         if (PluginId === "empty") {
             AddPluginChannel("synth");
             return;
         }
-
         AddPluginChannel(PluginId);
     });
 }
@@ -1683,6 +1779,8 @@ function BindDockCollapse() {
 
     function ApplyCollapsed(Dock, Collapsed, Side) {
         if (!Dock) return;
+        Dock.classList.add("DockAnimating");
+        Dock.style.transition = "width 0.28s cubic-bezier(0.22,1,0.36,1), min-width 0.28s cubic-bezier(0.22,1,0.36,1), max-width 0.28s cubic-bezier(0.22,1,0.36,1)";
         if (Collapsed) {
             if (Side === "left" || Side === "right") {
                 if (!Dock.classList.contains("Collapsed")) {
@@ -1692,31 +1790,41 @@ function BindDockCollapse() {
                     } catch (_) {}
                 }
             }
-            Dock.classList.add("Collapsed");
+            // animate width first, then lock collapsed chrome
             if (Side === "left" || Side === "right") {
-                Dock.style.width = "36px";
                 Dock.style.minWidth = "36px";
                 Dock.style.maxWidth = "36px";
+                Dock.style.width = "36px";
             }
+            Dock.classList.add("Collapsed");
         } else {
             Dock.classList.remove("Collapsed");
             if (Side === "left") {
                 var Lw = FormatWidth(localStorage.getItem("OsDockLeft") || "200");
-                Dock.style.width = Lw;
                 Dock.style.minWidth = "";
                 Dock.style.maxWidth = "";
+                // force reflow so expand animates from 36
+                void Dock.offsetWidth;
+                Dock.style.width = Lw;
             }
             if (Side === "right") {
                 var Rw = FormatWidth(localStorage.getItem("OsDockRight") || "240");
-                Dock.style.width = Rw;
                 Dock.style.minWidth = "";
                 Dock.style.maxWidth = "";
+                void Dock.offsetWidth;
+                Dock.style.width = Rw;
             }
         }
         if (Side === "left") SetDockToggleIcon(ToggleLeft, Collapsed);
         if (Side === "right") SetDockToggleIcon(ToggleRight, Collapsed);
-        ResizeCanvases();
-        BuildPianoKeys();
+        var Done = function () {
+            Dock.classList.remove("DockAnimating");
+            ResizeCanvases();
+            BuildPianoKeys();
+            Dock.removeEventListener("transitionend", Done);
+        };
+        Dock.addEventListener("transitionend", Done);
+        setTimeout(Done, 320);
     }
 
     if (ToggleLeft && Left) {
@@ -3467,10 +3575,10 @@ function RenderProjectList() {
             '<span class="SampleName">' + EscapeHtml(Project.Name || "Untitled") + '</span>' +
             '<span class="SampleSub">' +
             EscapeHtml(Project.Author || "?") +
-            (IsMine ? " · yours" : "") +
             " · " + ((Project.Channels && Project.Channels.length) || 0) + " ch" +
             '</span>' +
             '</div>';
+        if (IsMine) Item.classList.add("Mine");
         Item.title = "Double-click to open · Right-click for options";
         Item.title = "Double-click to open";
         (function (Doc, Mine) {
@@ -3577,9 +3685,9 @@ function RenderSampleList() {
             '<span class="SampleName">' + EscapeHtml(Sample.Name || "Untitled") + '</span>' +
             '<span class="SampleSub">' +
             EscapeHtml(Sample.Author || "?") + ' - ' + EscapeHtml(Sample.Genre || "") +
-            (IsMine ? " · yours" : "") +
             '</span>' +
             '</div>';
+        if (IsMine) Item.classList.add("Mine");
         Item.title = "Double-click to add · Right-click for options";
         BindSampleItem(Item, Sample, IsMine);
         SampleList.appendChild(Item);
@@ -3844,6 +3952,7 @@ function BindMenuBar() {
     BindMenuClick("MenuPluginTiming", function () { OpenTimingPlugin(); });
     BindMenuClick("MenuPluginMasterEq", function () { OpenMasterEqPlugin(); });
     BindMenuClick("MenuPluginAnalyzer", function () { OpenAnalyzerPlugin(); });
+    BindMenuClick("MenuPluginCreator", function () { OpenPluginCreator(); });
     BindMenuClick("MenuPluginMixer", function () { OpenMixer(); });
     BindMenuClick("MenuStudioSettings", function () { OpenStudioSettings(); });
 

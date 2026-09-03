@@ -387,3 +387,277 @@ RegisterPlugin("epiano", {
         PluginRegistry.grand.NoteOff(Engine, Voice);
     }
 });
+
+
+function MakeBasicSynthNoteOn(Defaults) {
+    return function (Engine, Plugin, Note, Velocity, NoteParams) {
+        Engine.EnsureCtx();
+        var Freq = 440 * Math.pow(2, (Note - 69) / 12);
+        var Now = Engine.Ctx.currentTime;
+        var Vel = (Velocity == null ? 0.85 : Velocity) * (Plugin.Gain == null ? 0.5 : Plugin.Gain);
+        var Wave = Plugin.Wave || Defaults.Wave || "sawtooth";
+        var Osc = Engine.Ctx.createOscillator();
+        Osc.type = Wave;
+        var Filter = Engine.Ctx.createBiquadFilter();
+        Filter.type = "lowpass";
+        Filter.frequency.value = Plugin.FilterHz != null ? Plugin.FilterHz : (Defaults.FilterHz || 4000);
+        Filter.Q.value = Plugin.Resonance != null ? Plugin.Resonance : 0.8;
+        var Out = Engine.Ctx.createGain();
+        var Atk = Plugin.Attack != null ? Plugin.Attack : (Defaults.Attack || 0.01);
+        var Dec = Plugin.Decay != null ? Plugin.Decay : (Defaults.Decay || 0.12);
+        var Sus = Plugin.Sustain != null ? Plugin.Sustain : (Defaults.Sustain || 0.6);
+        var Rel = Plugin.Release != null ? Plugin.Release : (Defaults.Release || 0.2);
+        Osc.frequency.setValueAtTime(Freq, Now);
+        Out.gain.setValueAtTime(0.0001, Now);
+        Out.gain.exponentialRampToValueAtTime(Math.max(0.0002, Vel), Now + Math.max(0.005, Atk));
+        Out.gain.exponentialRampToValueAtTime(Math.max(0.0002, Vel * Sus), Now + Math.max(0.005, Atk) + Math.max(0.01, Dec));
+        Osc.connect(Filter);
+        Filter.connect(Out);
+        Out.connect(Engine.Master);
+        Osc.start(Now);
+        return { Oscs: [Osc], Gain: Out, Filter: Filter, Plugin: Plugin };
+    };
+}
+
+function MakeBasicSynthNoteOff() {
+    return function (Engine, Voice) {
+        if (!Voice || !Voice.Gain) return;
+        var Now = Engine.Ctx.currentTime;
+        var Rel = (Voice.Plugin && Voice.Plugin.Release) || 0.2;
+        Voice.Gain.gain.cancelScheduledValues(Now);
+        Voice.Gain.gain.setValueAtTime(Math.max(0.0001, Voice.Gain.gain.value), Now);
+        Voice.Gain.gain.exponentialRampToValueAtTime(0.0001, Now + Rel);
+        if (Voice.Oscs) {
+            var I;
+            for (I = 0; I < Voice.Oscs.length; I++) {
+                try { Voice.Oscs[I].stop(Now + Rel + 0.05); } catch (_) {}
+            }
+        }
+    };
+}
+
+RegisterPlugin("organ", {
+    Name: "Organ",
+    Category: "Instrument",
+    NeedsSample: false,
+    Create: function () {
+        return { Id: "organ", Name: "Organ", Wave: "sine", Gain: 0.35, Attack: 0.01, Decay: 0.05, Sustain: 0.9, Release: 0.15, FilterHz: 6000 };
+    },
+    NoteOn: function (Engine, Plugin, Note, Velocity) {
+        Engine.EnsureCtx();
+        var Freq = 440 * Math.pow(2, (Note - 69) / 12);
+        var Now = Engine.Ctx.currentTime;
+        var Vel = (Velocity == null ? 0.85 : Velocity) * Plugin.Gain;
+        var Out = Engine.Ctx.createGain();
+        var Oscs = [];
+        var Ratios = [1, 2, 3, 4];
+        var Gains = [1, 0.5, 0.25, 0.12];
+        var I;
+        for (I = 0; I < Ratios.length; I++) {
+            var Osc = Engine.Ctx.createOscillator();
+            Osc.type = "sine";
+            Osc.frequency.value = Freq * Ratios[I];
+            var G = Engine.Ctx.createGain();
+            G.gain.value = Gains[I];
+            Osc.connect(G);
+            G.connect(Out);
+            Osc.start(Now);
+            Oscs.push(Osc);
+        }
+        Out.gain.setValueAtTime(0.0001, Now);
+        Out.gain.exponentialRampToValueAtTime(Math.max(0.0002, Vel), Now + Plugin.Attack);
+        Out.connect(Engine.Master);
+        return { Oscs: Oscs, Gain: Out, Plugin: Plugin };
+    },
+    NoteOff: MakeBasicSynthNoteOff()
+});
+
+RegisterPlugin("pad", {
+    Name: "Pad",
+    Category: "Instrument",
+    NeedsSample: false,
+    Create: function () {
+        return { Id: "pad", Name: "Pad", Wave: "triangle", Gain: 0.28, Attack: 0.4, Decay: 0.5, Sustain: 0.7, Release: 1.2, FilterHz: 1800, Detune: 12 };
+    },
+    NoteOn: function (Engine, Plugin, Note, Velocity) {
+        Engine.EnsureCtx();
+        var Freq = 440 * Math.pow(2, (Note - 69) / 12);
+        var Now = Engine.Ctx.currentTime;
+        var Vel = (Velocity == null ? 0.85 : Velocity) * Plugin.Gain;
+        var Filter = Engine.Ctx.createBiquadFilter();
+        Filter.type = "lowpass";
+        Filter.frequency.value = Plugin.FilterHz;
+        var Out = Engine.Ctx.createGain();
+        var Oscs = [];
+        var I;
+        for (I = 0; I < 3; I++) {
+            var Osc = Engine.Ctx.createOscillator();
+            Osc.type = Plugin.Wave || "triangle";
+            Osc.frequency.value = Freq;
+            Osc.detune.value = (I - 1) * (Plugin.Detune || 10);
+            Osc.connect(Filter);
+            Osc.start(Now);
+            Oscs.push(Osc);
+        }
+        Filter.connect(Out);
+        Out.gain.setValueAtTime(0.0001, Now);
+        Out.gain.linearRampToValueAtTime(Vel, Now + Plugin.Attack);
+        Out.gain.linearRampToValueAtTime(Vel * Plugin.Sustain, Now + Plugin.Attack + Plugin.Decay);
+        Out.connect(Engine.Master);
+        return { Oscs: Oscs, Gain: Out, Filter: Filter, Plugin: Plugin };
+    },
+    NoteOff: MakeBasicSynthNoteOff()
+});
+
+RegisterPlugin("lead", {
+    Name: "Lead",
+    Category: "Instrument",
+    NeedsSample: false,
+    Create: function () {
+        return { Id: "lead", Name: "Lead", Wave: "sawtooth", Gain: 0.4, Attack: 0.02, Decay: 0.15, Sustain: 0.65, Release: 0.25, FilterHz: 5000 };
+    },
+    NoteOn: MakeBasicSynthNoteOn({ Wave: "sawtooth", FilterHz: 5000 }),
+    NoteOff: MakeBasicSynthNoteOff()
+});
+
+RegisterPlugin("bell", {
+    Name: "Bell",
+    Category: "Instrument",
+    NeedsSample: false,
+    Create: function () {
+        return { Id: "bell", Name: "Bell", Wave: "sine", Gain: 0.45, Attack: 0.002, Decay: 1.2, Sustain: 0.15, Release: 0.8, FilterHz: 8000 };
+    },
+    NoteOn: function (Engine, Plugin, Note, Velocity) {
+        Engine.EnsureCtx();
+        var Freq = 440 * Math.pow(2, (Note - 69) / 12);
+        var Now = Engine.Ctx.currentTime;
+        var Vel = (Velocity == null ? 0.85 : Velocity) * Plugin.Gain;
+        var Out = Engine.Ctx.createGain();
+        var Oscs = [];
+        var Partials = [1, 2.76, 5.4];
+        var I;
+        for (I = 0; I < Partials.length; I++) {
+            var Osc = Engine.Ctx.createOscillator();
+            Osc.type = "sine";
+            Osc.frequency.value = Freq * Partials[I];
+            var G = Engine.Ctx.createGain();
+            G.gain.value = 1 / (I + 1);
+            Osc.connect(G);
+            G.connect(Out);
+            Osc.start(Now);
+            Oscs.push(Osc);
+        }
+        Out.gain.setValueAtTime(0.0001, Now);
+        Out.gain.exponentialRampToValueAtTime(Math.max(0.0002, Vel), Now + 0.005);
+        Out.gain.exponentialRampToValueAtTime(Math.max(0.0002, Vel * 0.15), Now + Plugin.Decay);
+        Out.connect(Engine.Master);
+        return { Oscs: Oscs, Gain: Out, Plugin: Plugin };
+    },
+    NoteOff: MakeBasicSynthNoteOff()
+});
+
+RegisterPlugin("fm", {
+    Name: "FM Keys",
+    Category: "Instrument",
+    NeedsSample: false,
+    Create: function () {
+        return { Id: "fm", Name: "FM Keys", Wave: "sine", Gain: 0.4, Attack: 0.01, Decay: 0.3, Sustain: 0.4, Release: 0.35, FilterHz: 5000, ModIndex: 120 };
+    },
+    NoteOn: function (Engine, Plugin, Note, Velocity) {
+        Engine.EnsureCtx();
+        var Freq = 440 * Math.pow(2, (Note - 69) / 12);
+        var Now = Engine.Ctx.currentTime;
+        var Vel = (Velocity == null ? 0.85 : Velocity) * Plugin.Gain;
+        var Car = Engine.Ctx.createOscillator();
+        var Mod = Engine.Ctx.createOscillator();
+        var ModGain = Engine.Ctx.createGain();
+        var Out = Engine.Ctx.createGain();
+        Car.type = "sine";
+        Mod.type = "sine";
+        Car.frequency.value = Freq;
+        Mod.frequency.value = Freq * 2;
+        ModGain.gain.value = Plugin.ModIndex || 120;
+        Mod.connect(ModGain);
+        ModGain.connect(Car.frequency);
+        Car.connect(Out);
+        Out.gain.setValueAtTime(0.0001, Now);
+        Out.gain.exponentialRampToValueAtTime(Math.max(0.0002, Vel), Now + Plugin.Attack);
+        Out.gain.exponentialRampToValueAtTime(Math.max(0.0002, Vel * Plugin.Sustain), Now + Plugin.Attack + Plugin.Decay);
+        Out.connect(Engine.Master);
+        Mod.start(Now);
+        Car.start(Now);
+        return { Oscs: [Car, Mod], Gain: Out, Plugin: Plugin };
+    },
+    NoteOff: MakeBasicSynthNoteOff()
+});
+
+RegisterPlugin("noise", {
+    Name: "Noise Hit",
+    Category: "Instrument",
+    NeedsSample: false,
+    Create: function () {
+        return { Id: "noise", Name: "Noise Hit", Gain: 0.5, Attack: 0.001, Decay: 0.12, Sustain: 0.05, Release: 0.08, FilterHz: 4000 };
+    },
+    NoteOn: function (Engine, Plugin, Note, Velocity) {
+        Engine.EnsureCtx();
+        var Now = Engine.Ctx.currentTime;
+        var Vel = (Velocity == null ? 0.85 : Velocity) * Plugin.Gain;
+        var Dur = 0.25;
+        var Buf = Engine.Ctx.createBuffer(1, Engine.Ctx.sampleRate * Dur, Engine.Ctx.sampleRate);
+        var Data = Buf.getChannelData(0);
+        var I;
+        for (I = 0; I < Data.length; I++) Data[I] = Math.random() * 2 - 1;
+        var Src = Engine.Ctx.createBufferSource();
+        Src.buffer = Buf;
+        var Filter = Engine.Ctx.createBiquadFilter();
+        Filter.type = "bandpass";
+        Filter.frequency.value = 200 + ((Note || 60) / 127) * 6000;
+        var Out = Engine.Ctx.createGain();
+        Out.gain.setValueAtTime(0.0001, Now);
+        Out.gain.exponentialRampToValueAtTime(Math.max(0.0002, Vel), Now + 0.005);
+        Out.gain.exponentialRampToValueAtTime(0.0001, Now + Plugin.Decay);
+        Src.connect(Filter);
+        Filter.connect(Out);
+        Out.connect(Engine.Master);
+        Src.start(Now);
+        return { Source: Src, Gain: Out, Plugin: Plugin };
+    },
+    NoteOff: function (Engine, Voice) {
+        if (!Voice || !Voice.Gain) return;
+        var Now = Engine.Ctx.currentTime;
+        Voice.Gain.gain.cancelScheduledValues(Now);
+        Voice.Gain.gain.setValueAtTime(Math.max(0.0001, Voice.Gain.gain.value), Now);
+        Voice.Gain.gain.exponentialRampToValueAtTime(0.0001, Now + 0.05);
+    }
+});
+
+globalThis.CreateCustomPlugin = function (Spec) {
+    Spec = Spec || {};
+    var Id = String(Spec.Id || ("custom_" + Date.now())).replace(/[^a-zA-Z0-9_]/g, "_").toLowerCase();
+    if (!Id) Id = "custom_" + Date.now();
+    if (PluginRegistry[Id]) Id = Id + "_" + Date.now();
+    var Name = String(Spec.Name || "Custom Synth").slice(0, 40);
+    var Def = {
+        Name: Name,
+        Category: "Custom",
+        NeedsSample: false,
+        Create: function () {
+            return {
+                Id: Id,
+                Name: Name,
+                Wave: Spec.Wave || "sawtooth",
+                Gain: Spec.Gain != null ? Spec.Gain : 0.45,
+                Attack: Spec.Attack != null ? Spec.Attack : 0.02,
+                Decay: Spec.Decay != null ? Spec.Decay : 0.15,
+                Sustain: Spec.Sustain != null ? Spec.Sustain : 0.6,
+                Release: Spec.Release != null ? Spec.Release : 0.25,
+                FilterHz: Spec.FilterHz != null ? Spec.FilterHz : 4000,
+                Resonance: Spec.Resonance != null ? Spec.Resonance : 0.8
+            };
+        },
+        NoteOn: MakeBasicSynthNoteOn({ Wave: Spec.Wave || "sawtooth", FilterHz: Spec.FilterHz || 4000 }),
+        NoteOff: MakeBasicSynthNoteOff()
+    };
+    RegisterPlugin(Id, Def);
+    return Id;
+};

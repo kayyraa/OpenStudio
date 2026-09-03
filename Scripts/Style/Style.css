@@ -3393,3 +3393,116 @@ input[type="range"]:active {
 .ChannelFxFloatRows .Button {
     margin-top: 6px;
 }
+
+
+/* Topbar floating full-height buttons */
+.Topbar .Button,
+.Topbar .SignInButton,
+.Topbar .SignOutButton,
+.TopbarRight > .Button,
+.TopbarRight > .SignInButton {
+    height: 100% !important;
+    min-height: 100% !important;
+    align-self: stretch !important;
+    border-radius: 0 !important;
+    border-top: none !important;
+    border-bottom: none !important;
+    margin: 0 !important;
+    box-shadow: 0 1px 0 rgba(255,255,255,0.04) inset, 0 -1px 0 rgba(0,0,0,0.25) inset;
+    background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(0,0,0,0.12));
+    transition: background 0.15s ease, color 0.15s ease, box-shadow 0.15s ease, transform 0.12s ease;
+}
+.Topbar .Button:hover,
+.Topbar .SignInButton:hover,
+.Topbar .SignOutButton:hover {
+    background: linear-gradient(180deg, rgba(255,255,255,0.08), rgba(0,0,0,0.08));
+    box-shadow: 0 0 0 1px rgba(255,106,0,0.25) inset;
+}
+.Topbar .UserChip {
+    height: 100% !important;
+    border-bottom: none !important;
+    display: inline-flex;
+    align-items: stretch;
+}
+.Topbar .UserChip .SignOutButton {
+    height: 100% !important;
+}
+.Topbar .UserChip .Profile {
+    align-self: center;
+}
+
+.Topbar span {
+    display: flex;
+    align-items: center;
+}
+
+/* Dock resize max 2px */
+.DockResize {
+    width: 2px !important;
+    max-width: 2px !important;
+    min-width: 2px !important;
+}
+.PanelLeft .DockResize { right: -1px !important; }
+.PanelRight .DockResize { left: -1px !important; }
+.DockResizeHorizontal {
+    height: 2px !important;
+    max-height: 2px !important;
+}
+
+/* Dock expand/collapse transitions */
+.Dock {
+    transition: width 0.28s cubic-bezier(0.22,1,0.36,1),
+                min-width 0.28s cubic-bezier(0.22,1,0.36,1),
+                max-width 0.28s cubic-bezier(0.22,1,0.36,1),
+                background 0.2s ease !important;
+}
+.Dock.DockAnimating {
+    overflow: hidden;
+}
+.Dock.Collapsed {
+    transition: width 0.28s cubic-bezier(0.22,1,0.36,1),
+                min-width 0.28s cubic-bezier(0.22,1,0.36,1),
+                max-width 0.28s cubic-bezier(0.22,1,0.36,1) !important;
+}
+.Dock .ChannelList,
+.Dock .SampleList,
+.Dock .BrowserToolbar,
+.Dock .BrowserTabs,
+.Dock .PanelHeader span {
+    transition: opacity 0.18s ease;
+}
+.Dock.Collapsed .ChannelList,
+.Dock.Collapsed .SampleList,
+.Dock.Collapsed .BrowserToolbar,
+.Dock.Collapsed .BrowserTabs,
+.Dock.Collapsed .PanelHeader span {
+    opacity: 0;
+    pointer-events: none;
+}
+.PianoDock {
+    transition: height 0.28s cubic-bezier(0.22,1,0.36,1), min-height 0.28s ease, max-height 0.28s ease !important;
+}
+
+/* Owned browser items highlighted instead of "yours" text */
+.SampleItem.Mine,
+.ProjectItem.Mine {
+    background: rgba(255, 106, 0, 0.08);
+    box-shadow: inset 2px 0 0 var(--Accent, #ff6a00);
+}
+.SampleItem.Mine:hover,
+.ProjectItem.Mine:hover {
+    background: rgba(255, 106, 0, 0.14);
+}
+.SampleItem.Mine .SampleName {
+    color: var(--Accent, #ff6a00);
+}
+
+.PluginCreatorEntry {
+    border-top: 1px solid #333 !important;
+    color: var(--Accent, #ff6a00) !important;
+    font-weight: 600;
+}
+.PluginMenu {
+    max-height: min(70vh, 420px);
+    overflow-y: auto;
+}
